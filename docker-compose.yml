@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: zainstore-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: zainstore
+      POSTGRES_USER: zainstore
+      POSTGRES_PASSWORD: zainstore
+    volumes:
+      - zainstore-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zainstore -d zainstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  zainstore-db:
