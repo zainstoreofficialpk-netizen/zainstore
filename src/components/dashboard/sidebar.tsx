@@ -4,16 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Store } from "lucide-react";
 
-import type { NavItem } from "@/config/navigation";
 import { cn } from "@/lib/utils";
+import { adminNavigation, vendorNavigation, customerNavigation } from "@/config/navigation";
+
+const navMap = {
+  admin: adminNavigation,
+  vendor: vendorNavigation,
+  customer: customerNavigation,
+};
 
 type SidebarProps = {
   title: string;
-  items: NavItem[];
+  portal: "admin" | "vendor" | "customer";
 };
 
-export function Sidebar({ title, items }: SidebarProps) {
+export function Sidebar({ title, portal }: SidebarProps) {
   const pathname = usePathname();
+  const items = navMap[portal];
 
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-zinc-200 bg-white lg:block">
@@ -31,7 +38,9 @@ export function Sidebar({ title, items }: SidebarProps) {
       {/* Nav */}
       <nav className="space-y-0.5 p-3">
         {items.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/" && pathname.startsWith(item.href + "/"));
           return (
             <Link
               key={item.href}
@@ -39,7 +48,7 @@ export function Sidebar({ title, items }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-brand-50 text-brand-700 font-semibold"
+                  ? "bg-brand-50 font-semibold text-brand-700"
                   : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900",
               )}
             >
