@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
+import { revalidatePath } from "next/cache";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
@@ -37,6 +38,11 @@ export async function updatePersonalInfo(data: {
       image: data.image?.trim() || null,
     },
   });
+
+  // Revalidate all portal layouts so the topbar reflects the new name/avatar immediately
+  revalidatePath("/admin", "layout");
+  revalidatePath("/vendor", "layout");
+  revalidatePath("/customer", "layout");
 
   return { success: true, message: "Profile updated successfully." };
 }

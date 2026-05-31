@@ -68,11 +68,9 @@ export async function registerCustomer(data: {
     },
   });
 
-  if (parsed.data.city) {
-    await db.address.create({
-      data: { userId: user.id, label: "Home", line1: "", city: parsed.data.city },
-    });
-  }
+  // Only create address if a meaningful city was supplied
+  // (line1 is required by schema — skip if we only have city, let user add full address from profile)
+  // Address can be properly set from /customer/profile?tab=bank after registration
 
   const token = await createVerificationToken(user.email);
   const url = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;

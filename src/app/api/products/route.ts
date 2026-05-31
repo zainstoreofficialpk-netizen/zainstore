@@ -1,7 +1,9 @@
-import { ProductStatus } from "@prisma/client";
+import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { ProductStatus } from "@prisma/client";
 import { z } from "zod";
 
+import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 
 const createProductSchema = z.object({
@@ -35,6 +37,18 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // ── Auth guard ──────────────────────────────────────────────────────────────
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (session.user.role !== "VENDOR" && session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Only vendors and admins can create products." }, { status: 403 });
+  }
+
+  // ── Validate payload ────────────────────────────────────────────────────────
   const body = await request.json();
   const parsed = createProductSchema.safeParse(body);
 
@@ -45,6 +59,27 @@ export async function POST(request: Request) {
     );
   }
 
+  // ── Ownership check (vendor can only create under their own store) ──────────
+  if (session.user.role === "VENDOR") {
+    const vendorProfile = await db.vendorProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true, store: { select: { id: true } } },
+    });
+
+    if (!vendorProfile) {
+      return NextResponse.json({ error: "Vendor profile not found." }, { status: 403 });
+    }
+
+    if (parsed.data.vendorId !== vendorProfile.id) {
+      return NextResponse.json({ error: "Cannot create products for another vendor." }, { status: 403 });
+    }
+
+    if (parsed.data.storeId !== vendorProfile.store?.id) {
+      return NextResponse.json({ error: "Cannot create products in another vendor's store." }, { status: 403 });
+    }
+  }
+
+  // ── Create ──────────────────────────────────────────────────────────────────
   const product = await db.product.create({
     data: {
       ...parsed.data,
