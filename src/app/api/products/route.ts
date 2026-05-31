@@ -6,12 +6,15 @@ import { db } from "@/lib/db";
 
 const createProductSchema = z.object({
   vendorId: z.string().min(1),
+  storeId: z.string().min(1),
   categoryId: z.string().optional(),
+  brandId: z.string().optional(),
   name: z.string().min(2),
   slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  sku: z.string().optional(),
   description: z.string().min(10),
   price: z.coerce.number().positive(),
-  compareAt: z.coerce.number().positive().optional(),
+  salePrice: z.coerce.number().positive().optional(),
   stock: z.coerce.number().int().min(0).default(0),
 });
 
@@ -20,7 +23,9 @@ export async function GET() {
     where: { status: ProductStatus.ACTIVE },
     include: {
       vendor: true,
+      store: true,
       category: true,
+      brand: true,
       images: { orderBy: { sortOrder: "asc" } },
     },
     orderBy: { createdAt: "desc" },
@@ -44,7 +49,7 @@ export async function POST(request: Request) {
     data: {
       ...parsed.data,
       price: parsed.data.price.toString(),
-      compareAt: parsed.data.compareAt?.toString(),
+      salePrice: parsed.data.salePrice?.toString(),
       status: ProductStatus.DRAFT,
     },
   });

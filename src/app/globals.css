@@ -2,13 +2,24 @@
 
 :root {
   color-scheme: light;
-  --background: #f7f5ef;
-  --foreground: #1f2933;
-  --muted: #637083;
-  --line: #ded8cc;
+  --background: #f8fafc;
+  --foreground: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
   --brand: #0f766e;
   --brand-strong: #115e59;
-  --accent: #c2410c;
+  --accent: #be123c;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --muted: #a1a1aa;
+  --line: #27272a;
+  --brand: #14b8a6;
+  --brand-strong: #2dd4bf;
+  --accent: #fb7185;
 }
 
 * {
