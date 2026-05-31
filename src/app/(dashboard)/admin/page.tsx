@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
           <Card key={item.title}>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <span className="grid size-9 place-items-center rounded-md bg-teal-50 text-teal-700">
+                <span className="grid size-9 place-items-center rounded-md bg-brand-50 text-brand-600">
                   <item.icon size={18} aria-hidden />
                 </span>
                 <CardTitle>{item.title}</CardTitle>

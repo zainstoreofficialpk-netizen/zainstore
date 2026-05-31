@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
         <div className="max-w-sm text-center">
           <p className="text-sm text-zinc-600">Invalid reset link. Please request a new one.</p>
-          <Link href="/forgot-password" className="mt-4 inline-block text-sm font-medium text-teal-700 hover:underline">
+          <Link href="/forgot-password" className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline">
             Request reset link
           </Link>
         </div>
@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
 
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-teal-700 text-white">
+          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
             <Store size={24} aria-hidden />
           </span>
           <div>
@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
-                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
               <div>
@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat password"
-                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
 
@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+                className="w-full rounded-md bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
               >
                 {loading ? "Updating…" : "Update password"}
               </button>

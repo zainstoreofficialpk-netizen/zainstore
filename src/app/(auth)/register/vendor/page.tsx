@@ -128,7 +128,7 @@ export default function VendorRegisterPage() {
 
         {/* Header */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-teal-700 text-white">
+          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
             <Store size={24} aria-hidden />
           </span>
           <div>
@@ -143,16 +143,16 @@ export default function VendorRegisterPage() {
             <div key={label} className="flex flex-1 items-center">
               <div className="flex flex-col items-center gap-1">
                 <div className={`grid size-8 place-items-center rounded-full text-xs font-bold transition ${
-                  i < step ? "bg-teal-700 text-white" : i === step ? "bg-teal-700 text-white ring-4 ring-teal-100" : "bg-zinc-200 text-zinc-500"
+                  i < step ? "bg-brand-500 text-white" : i === step ? "bg-brand-500 text-white ring-4 ring-brand-100" : "bg-zinc-200 text-zinc-500"
                 }`}>
                   {i < step ? <Check size={14} /> : i + 1}
                 </div>
-                <span className={`hidden text-xs sm:block ${i === step ? "font-semibold text-teal-700" : "text-zinc-400"}`}>
+                <span className={`hidden text-xs sm:block ${i === step ? "font-semibold text-brand-600" : "text-zinc-400"}`}>
                   {label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`mx-2 h-0.5 flex-1 transition ${i < step ? "bg-teal-700" : "bg-zinc-200"}`} />
+                <div className={`mx-2 h-0.5 flex-1 transition ${i < step ? "bg-brand-500" : "bg-zinc-200"}`} />
               )}
             </div>
           ))}
@@ -199,7 +199,7 @@ export default function VendorRegisterPage() {
                       placeholder="urban-loom"
                       value={form.storeSlug}
                       onChange={(e) => { setSlugEdited(true); set("storeSlug")(e); }}
-                      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                     />
                   </div>
                   <div>
@@ -212,7 +212,7 @@ export default function VendorRegisterPage() {
                       placeholder="Tell customers what your store is about…"
                       value={form.storeDescription}
                       onChange={set("storeDescription")}
-                      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                     />
                   </div>
                 </>
@@ -265,7 +265,7 @@ export default function VendorRegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+                  className="flex-1 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
                 >
                   {step === STEPS.length - 1 ? (loading ? "Submitting…" : "Submit Application") : "Next →"}
                 </button>
@@ -276,7 +276,7 @@ export default function VendorRegisterPage() {
 
         <p className="mt-6 text-center text-sm text-zinc-500">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-teal-700 hover:underline">Sign in</Link>
+          <Link href="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>
@@ -289,7 +289,7 @@ function Field({ label, id, ...props }: { label: string; id: string } & React.In
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-zinc-700">{label}</label>
       <input
         id={id}
-        className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+        className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         {...props}
       />
     </div>

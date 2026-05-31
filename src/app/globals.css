@@ -1,25 +1,56 @@
 @import "tailwindcss";
 
+/* ── Custom colour scale ────────────────────────────────────────────────────
+   brand  = #faa42d  warm amber / golden orange   (primary actions)
+   accent = #f1672e  orange-red                   (highlights, badges)
+   Pastels are used for soft backgrounds; brights only where impactful.
+──────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Brand – amber/golden */
+  --color-brand-50:  #fff8e8;
+  --color-brand-100: #fff0c4;
+  --color-brand-200: #fdd98a;
+  --color-brand-300: #fcbd4f;
+  --color-brand-400: #fbb030;
+  --color-brand-500: #faa42d;
+  --color-brand-600: #e8920a;
+  --color-brand-700: #c47a08;
+  --color-brand-800: #9e620a;
+  --color-brand-950: #4e2e04;
+
+  /* Accent – orange-red */
+  --color-accent-50:  #fff2ed;
+  --color-accent-100: #ffe4d4;
+  --color-accent-200: #fec4a0;
+  --color-accent-300: #fd9e6c;
+  --color-accent-400: #f6803f;
+  --color-accent-500: #f1672e;
+  --color-accent-600: #dd5120;
+  --color-accent-700: #b63e18;
+  --color-accent-800: #923115;
+  --color-accent-950: #481608;
+}
+
 :root {
   color-scheme: light;
-  --background: #f8fafc;
+  --background: #faf9f7;
   --foreground: #18181b;
-  --muted: #71717a;
-  --line: #e4e4e7;
-  --brand: #0f766e;
-  --brand-strong: #115e59;
-  --accent: #be123c;
+  --muted: #78716c;
+  --line: #e7e5e4;
+  --brand: #faa42d;
+  --brand-strong: #e8920a;
+  --accent: #f1672e;
 }
 
 .dark {
   color-scheme: dark;
   --background: #09090b;
   --foreground: #fafafa;
-  --muted: #a1a1aa;
+  --muted: #a8a29e;
   --line: #27272a;
-  --brand: #14b8a6;
-  --brand-strong: #2dd4bf;
-  --accent: #fb7185;
+  --brand: #faa42d;
+  --brand-strong: #fbb030;
+  --accent: #f1672e;
 }
 
 * {

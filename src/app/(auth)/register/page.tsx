@@ -8,7 +8,7 @@ export default function RegisterPage() {
 
         <div className="mb-10 text-center">
           <div className="mb-4 flex justify-center">
-            <span className="grid size-12 place-items-center rounded-xl bg-teal-700 text-white">
+            <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
               <Store size={24} aria-hidden />
             </span>
           </div>
@@ -20,9 +20,9 @@ export default function RegisterPage() {
           {/* Customer */}
           <Link
             href="/register/customer"
-            className="group flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-teal-500 hover:shadow-md"
+            className="group flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-brand-400 hover:shadow-md"
           >
-            <div className="grid size-12 place-items-center rounded-xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-100">
+            <div className="grid size-12 place-items-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-100">
               <ShoppingBag size={24} aria-hidden />
             </div>
             <div>
@@ -31,7 +31,7 @@ export default function RegisterPage() {
                 Create a buyer account to browse products, place orders, manage your wishlist, and track deliveries.
               </p>
             </div>
-            <span className="mt-auto inline-flex items-center text-sm font-semibold text-teal-700 group-hover:underline">
+            <span className="mt-auto inline-flex items-center text-sm font-semibold text-brand-600 group-hover:underline">
               Create customer account →
             </span>
           </Link>
@@ -39,7 +39,7 @@ export default function RegisterPage() {
           {/* Vendor */}
           <Link
             href="/register/vendor"
-            className="group flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-teal-500 hover:shadow-md"
+            className="group flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-brand-400 hover:shadow-md"
           >
             <div className="grid size-12 place-items-center rounded-xl bg-amber-50 text-amber-700 transition group-hover:bg-amber-100">
               <Store size={24} aria-hidden />
@@ -50,7 +50,7 @@ export default function RegisterPage() {
                 Apply as a vendor to list products, manage your store, process orders, and receive payouts.
               </p>
             </div>
-            <span className="mt-auto inline-flex items-center text-sm font-semibold text-teal-700 group-hover:underline">
+            <span className="mt-auto inline-flex items-center text-sm font-semibold text-brand-600 group-hover:underline">
               Apply as a vendor →
             </span>
           </Link>
@@ -58,7 +58,7 @@ export default function RegisterPage() {
 
         <p className="mt-8 text-center text-sm text-zinc-500">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-teal-700 hover:underline">
+          <Link href="/login" className="font-medium text-brand-600 hover:underline">
             Sign in
           </Link>
         </p>

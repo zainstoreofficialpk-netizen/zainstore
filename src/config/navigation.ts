@@ -20,12 +20,12 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
   title: string;
   href: string;
-  icon: ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 };
 
 export const adminNavigation: NavItem[] = [

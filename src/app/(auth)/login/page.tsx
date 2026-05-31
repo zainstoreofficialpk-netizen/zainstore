@@ -45,7 +45,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-teal-700 text-white">
+          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
             <Store size={24} aria-hidden />
           </span>
           <div>
@@ -69,7 +69,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
             </div>
 
@@ -78,7 +78,7 @@ export default function LoginPage() {
                 <label htmlFor="password" className="text-sm font-medium text-zinc-700">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-xs text-teal-700 hover:underline">
+                <Link href="/forgot-password" className="text-xs text-brand-600 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
             </div>
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="size-4 rounded border-zinc-300 accent-teal-700"
+                className="size-4 rounded border-zinc-300 accent-brand-500"
               />
               <label htmlFor="remember" className="text-sm text-zinc-600">
                 Remember me for 30 days
@@ -114,7 +114,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="w-full rounded-md bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
@@ -125,13 +125,13 @@ export default function LoginPage() {
         <div className="mt-6 space-y-2 text-center text-sm text-zinc-500">
           <p>
             New customer?{" "}
-            <Link href="/register/customer" className="font-medium text-teal-700 hover:underline">
+            <Link href="/register/customer" className="font-medium text-brand-600 hover:underline">
               Create account
             </Link>
           </p>
           <p>
             Want to sell?{" "}
-            <Link href="/register/vendor" className="font-medium text-teal-700 hover:underline">
+            <Link href="/register/vendor" className="font-medium text-brand-600 hover:underline">
               Apply as a vendor
             </Link>
           </p>

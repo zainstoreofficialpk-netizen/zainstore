@@ -50,7 +50,7 @@ export async function registerCustomer(data: {
   city?: string;
 }): Promise<ActionResult> {
   const parsed = customerSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
   const existing = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) return { success: false, error: "An account with this email already exists." };
@@ -85,7 +85,7 @@ export async function registerCustomer(data: {
 
 export async function registerVendor(data: z.infer<typeof vendorSchema>): Promise<ActionResult> {
   const parsed = vendorSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
   const [existingEmail, existingSlug] = await Promise.all([
     db.user.findUnique({ where: { email: parsed.data.email } }),
