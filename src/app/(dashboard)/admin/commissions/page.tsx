@@ -1,20 +1,25 @@
-import { ModulePage } from "@/components/dashboard/module-page";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-const rows = [
-  ["Global Default", "Percentage of sale", "10%", "Shipping included", "Tax excluded", "Active"],
-  ["Urban Loom", "Vendor override", "8%", "Shipping excluded", "Coupon deducted", "Active"],
-  ["Electronics", "Category override", "12%", "Shipping included", "Tax included", "Active"],
-  ["High Ticket Products", "Price range", "15%", "Shipping excluded", "Tax excluded", "Pending Review"],
-];
+import { authOptions } from "@/lib/auth/config";
+import { getGlobalCommissionRate, getCommissionStats, getVendorCommissionBreakdown } from "@/lib/admin/commission-data";
+import { CommissionDashboard } from "@/components/admin/commission-dashboard";
 
-export default function CommissionsPage() {
+export default async function CommissionsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+
+  const [globalRate, stats, vendorBreakdown] = await Promise.all([
+    getGlobalCommissionRate(),
+    getCommissionStats(),
+    getVendorCommissionBreakdown(),
+  ]);
+
   return (
-    <ModulePage
-      title="Commission Management"
-      description="Configure global, vendor, product, category, sales-volume, and product-price-range commission strategies with history logs."
-      columns={["Scope", "Type", "Rate", "Shipping", "Tax / Coupon", "Status"]}
-      rows={rows}
-      capabilities={["Global Rate", "Vendor Override", "Product Override", "History Log"]}
+    <CommissionDashboard
+      globalRate={globalRate}
+      stats={stats}
+      vendorBreakdown={vendorBreakdown}
     />
   );
 }

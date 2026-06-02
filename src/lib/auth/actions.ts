@@ -2,11 +2,12 @@
 
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { UserRole } from "@prisma/client";
+import { UserRole, VendorStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { sendEmail, verificationEmailHtml, resetPasswordEmailHtml } from "@/lib/email";
 import { createVerificationToken, createPasswordResetToken, consumeToken } from "@/lib/auth/tokens";
+import { notifyAdminNewVendor } from "@/lib/admin/vendor-actions";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -104,6 +105,7 @@ export async function registerVendor(data: z.infer<typeof vendorSchema>): Promis
       phone: parsed.data.phone,
       vendorProfile: {
         create: {
+          status: VendorStatus.PENDING_APPROVAL, // explicit — stays pending until admin approves
           bankName: parsed.data.bankName || null,
           accountTitle: parsed.data.accountTitle || null,
           accountNumber: parsed.data.accountNumber || null,
@@ -121,15 +123,26 @@ export async function registerVendor(data: z.infer<typeof vendorSchema>): Promis
         },
       },
     },
+    include: { vendorProfile: true },
   });
 
   const token = await createVerificationToken(user.email);
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;
-  await sendEmail({ to: user.email, subject: "Verify your ZainStore.pk vendor account", html: verificationEmailHtml(url) });
+  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;
+
+  // Notify admin of the new application (non-blocking)
+  if (user.vendorProfile) {
+    notifyAdminNewVendor(user.vendorProfile.id, parsed.data.storeName, parsed.data.name).catch(() => {});
+  }
+
+  await sendEmail({
+    to: user.email,
+    subject: "Verify your ZainStore.pk vendor account",
+    html: verificationEmailHtml(verifyUrl),
+  });
 
   return {
     success: true,
-    message: "Application submitted! Verify your email — your account will be reviewed by our team within 24 hours.",
+    message: "Application submitted! Please verify your email. Your account will be reviewed by our team — you'll be notified once approved.",
   };
 }
 

@@ -1,19 +1,15 @@
-import { ModulePage } from "@/components/dashboard/module-page";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-const rows = [
-  ["Karachi Metro", "Karachi", "Flat Rate", "PKR 250", "Vendor override on", "Active"],
-  ["Pakistan Nationwide", "All Regions", "Distance Rate", "Variable", "Vendor override off", "Active"],
-  ["Pickup Partners", "Selected Cities", "Local Pickup", "PKR 0", "Vendor override on", "Pending Review"],
-];
+import { authOptions } from "@/lib/auth/config";
+import { getShippingSettings } from "@/lib/shipping";
+import { ShippingManager } from "@/components/admin/shipping-manager";
 
-export default function ShippingPage() {
-  return (
-    <ModulePage
-      title="Shipping Management"
-      description="Define zones, methods, vendor shipping-rate overrides, shipping classes, distance-rate shipping, and tracking providers."
-      columns={["Zone", "Coverage", "Method", "Rate", "Vendor Rates", "Status"]}
-      rows={rows}
-      capabilities={["Zones", "Flat / Free / Pickup", "Shipping Classes", "Tracking Settings"]}
-    />
-  );
+export default async function AdminShippingPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+
+  const settings = await getShippingSettings();
+
+  return <ShippingManager settings={settings} />;
 }

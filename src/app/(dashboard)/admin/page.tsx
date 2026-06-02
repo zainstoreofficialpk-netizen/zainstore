@@ -1,62 +1,95 @@
-import { Building2, PackageCheck, ShieldCheck, UserCheck } from "lucide-react";
+import { Suspense } from "react";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
-import { PendingActions } from "@/components/dashboard/pending-actions";
-import { RevenueChart } from "@/components/dashboard/revenue-chart";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { ModuleTable } from "@/components/dashboard/module-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { adminStats, orderRows, vendorRows } from "@/lib/dashboard/sample-data";
+import { authOptions } from "@/lib/auth/config";
+import {
+  getAdminDashboardStats,
+  getPendingActionCounts,
+  getRecentOrders,
+  getRecentVendors,
+  getTopSellingProducts,
+  getTopVendors,
+  getLowStockProducts,
+  getPendingVendors,
+  getPendingWithdrawals,
+  getPendingRefunds,
+} from "@/lib/admin/dashboard-data";
 
-export default function AdminDashboardPage() {
+import { AdminStatCards } from "@/components/admin/admin-stat-cards";
+import { AdminRevenueChart } from "@/components/admin/admin-revenue-chart";
+import { AdminPendingActions } from "@/components/admin/admin-pending-actions";
+import { RecentOrdersTable } from "@/components/admin/recent-orders-table";
+import { RecentVendorsTable } from "@/components/admin/recent-vendors-table";
+import { TopProductsTable } from "@/components/admin/top-products-table";
+import { TopVendorsTable } from "@/components/admin/top-vendors-table";
+import { LowStockAlerts } from "@/components/admin/low-stock-alerts";
+import { PendingQueue } from "@/components/admin/pending-queue";
+
+export default async function AdminDashboardPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+
+  const [
+    stats,
+    pendingCounts,
+    recentOrders,
+    recentVendors,
+    topProducts,
+    topVendors,
+    lowStockProducts,
+    pendingVendors,
+    pendingWithdrawals,
+    pendingRefunds,
+  ] = await Promise.all([
+    getAdminDashboardStats(),
+    getPendingActionCounts(),
+    getRecentOrders(8),
+    getRecentVendors(6),
+    getTopSellingProducts(5),
+    getTopVendors(5),
+    getLowStockProducts(6),
+    getPendingVendors(5),
+    getPendingWithdrawals(5),
+    getPendingRefunds(5),
+  ]);
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {adminStats.map((stat) => (
-          <StatCard key={stat.title} {...stat} />
-        ))}
+    <div className="space-y-8">
+      {/* Stats grid */}
+      <AdminStatCards stats={stats} />
+
+      {/* Revenue chart + pending action counts */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-100" />}>
+          <AdminRevenueChart />
+        </Suspense>
+        <AdminPendingActions counts={pendingCounts} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <RevenueChart />
-        <PendingActions />
-      </div>
-
+      {/* Recent orders + recent vendor registrations */}
       <div className="grid gap-6 xl:grid-cols-2">
-        <ModuleTable
-          title="Recent Orders"
-          description="Status, payment, shipping, invoice, refund, and dispute workflow."
-          columns={["Order", "Customer", "Vendor", "Total", "Payment", "Status"]}
-          rows={orderRows}
-        />
-        <ModuleTable
-          title="Recent Vendors"
-          description="Application review, status control, subscriptions, and view-as-vendor entry."
-          columns={["Store", "Owner", "Products", "Revenue", "Commission", "Status"]}
-          rows={vendorRows}
-        />
+        <RecentOrdersTable orders={recentOrders} />
+        <RecentVendorsTable vendors={recentVendors} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { title: "Vendor View Mode", icon: UserCheck, text: "Impersonation workflow with an exit control back to admin." },
-          { title: "Product Approval", icon: PackageCheck, text: "Bulk approve, reject, feature, archive, and audit every catalog change." },
-          { title: "RBAC Guardrails", icon: ShieldCheck, text: "Separate admin, vendor, and customer route maps and permission contracts." },
-          { title: "Store Operations", icon: Building2, text: "SEO, hours, vacation mode, inquiries, policies, reviews, and categories." },
-        ].map((item) => (
-          <Card key={item.title}>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <span className="grid size-9 place-items-center rounded-md bg-brand-50 text-brand-600">
-                  <item.icon size={18} aria-hidden />
-                </span>
-                <CardTitle>{item.title}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm leading-6 text-zinc-500">{item.text}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Top products + top vendors */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <TopProductsTable products={topProducts} />
+        <TopVendorsTable vendors={topVendors} />
+      </div>
+
+      {/* Low stock alerts */}
+      <LowStockAlerts products={lowStockProducts} />
+
+      {/* Pending actions queue — full approve/reject UI */}
+      <div>
+        <h2 className="mb-4 text-base font-semibold text-zinc-900">Pending Actions Queue</h2>
+        <PendingQueue
+          pendingVendors={pendingVendors}
+          pendingWithdrawals={pendingWithdrawals}
+          pendingRefunds={pendingRefunds}
+        />
       </div>
     </div>
   );

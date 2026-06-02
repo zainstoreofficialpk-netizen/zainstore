@@ -1,19 +1,31 @@
-import { ModulePage } from "@/components/dashboard/module-page";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-const rows = [
-  ["Cotton Overshirt", "Urban Loom", "Fashion", "PKR 3,499", "42", "Active"],
-  ["Fast Charge Power Bank", "Gadget Yard", "Electronics", "PKR 6,999", "25", "Active"],
-  ["Bamboo Desk Lamp", "Home Craft PK", "Home", "PKR 4,250", "0", "Pending Review"],
-];
+import { authOptions } from "@/lib/auth/config";
+import { getProductsForApproval, getAdminProductStats } from "@/lib/admin/product-approval-data";
+import { ProductApprovalTable } from "@/components/admin/product-approval-table";
 
-export default function ProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: { status?: string; search?: string; page?: string };
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+
+  const [data, stats] = await Promise.all([
+    getProductsForApproval({
+      status: searchParams.status ?? "PENDING_REVIEW",
+      search: searchParams.search,
+      page: Number(searchParams.page ?? "1"),
+    }),
+    getAdminProductStats(),
+  ]);
+
   return (
-    <ModulePage
-      title="Product Management"
-      description="Manage product approval, rejection, bulk actions, categories, brands, attributes, featured products, and low-stock alerts."
-      columns={["Product", "Vendor", "Category", "Price", "Stock", "Status"]}
-      rows={rows}
-      capabilities={["Bulk Approval", "Featured Products", "Brand & Attributes", "Low Stock Alerts"]}
-    />
+    <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-100" />}>
+      <ProductApprovalTable data={data} stats={stats} />
+    </Suspense>
   );
 }

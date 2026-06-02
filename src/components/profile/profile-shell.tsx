@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import {
   Bell,
   Building2,
+  Camera,
   KeyRound,
   Landmark,
   Loader2,
   ShieldCheck,
+  Trash2,
   User,
   UserPen,
 } from "lucide-react";
@@ -154,10 +156,43 @@ function PersonalTab({ user }: { user: ProfileData }) {
   });
   const [newEmail, setNewEmail] = useState("");
   const [emailPending, startEmailTransition] = useTransition();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function set(k: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
+  }
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Please select a JPG, PNG, WEBP, or GIF image.");
+      return;
+    }
+
+    // Validate size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setForm((f) => ({ ...f, image: dataUrl }));
+      setUploadingPhoto(false);
+      toast.success("Photo selected — click Save changes to apply.");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file.");
+      setUploadingPhoto(false);
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleSave(e: React.FormEvent) {
@@ -187,20 +222,67 @@ function PersonalTab({ user }: { user: ProfileData }) {
           <p className="text-sm text-zinc-400">Update your name, phone number, and profile picture.</p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Avatar name={form.name || user.name} image={form.image || null} size="lg" />
-              <div className="flex-1">
-                <Field
-                  label="Avatar URL"
-                  id="image"
-                  type="url"
-                  placeholder="https://example.com/photo.jpg"
-                  value={form.image}
-                  onChange={set("image")}
-                  hint="Paste a direct image URL. File upload coming soon."
-                />
+          <form onSubmit={handleSave} className="space-y-5">
+
+            {/* Photo upload widget */}
+            <div className="flex items-center gap-5">
+              {/* Avatar with camera overlay */}
+              <div className="relative shrink-0">
+                <Avatar name={form.name || user.name} image={form.image || null} size="xl" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100"
+                  aria-label="Change photo"
+                >
+                  {uploadingPhoto
+                    ? <Loader2 size={20} className="animate-spin text-white" />
+                    : <Camera size={20} className="text-white" />
+                  }
+                </button>
               </div>
+
+              {/* Upload controls */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-zinc-700">Profile Photo</p>
+                <p className="text-xs text-zinc-400">JPG, PNG, WEBP or GIF · Max 2MB</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="gap-1.5"
+                  >
+                    {uploadingPhoto
+                      ? <><Loader2 size={13} className="animate-spin" /> Processing…</>
+                      : <><Camera size={13} /> Upload Photo</>
+                    }
+                  </Button>
+                  {form.image && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setForm((f) => ({ ...f, image: "" })); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      className="gap-1.5 text-rose-500 hover:border-rose-200 hover:bg-rose-50"
+                    >
+                      <Trash2 size={13} /> Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

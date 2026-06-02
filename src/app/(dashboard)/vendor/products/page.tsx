@@ -1,6 +1,35 @@
-import { ModulePage } from "@/components/dashboard/module-page";
-import { vendorModuleRows } from "@/lib/dashboard/portal-pages";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import type { ProductStatus } from "@prisma/client";
 
-export default function VendorProductsPage() {
-  return <ModulePage title="Vendor Products" description="Create products, manage variants, stock, images, attributes, and approval status." columns={["Module", "Scope", "Role", "Records", "Status"]} rows={vendorModuleRows} capabilities={["Product CRUD", "Inventory", "Variants", "Approval Status"]} />;
+import { authOptions } from "@/lib/auth/config";
+import { getVendorProducts, getVendorProductStats, getVendorStore } from "@/lib/vendor/product-data";
+import { ProductTable } from "@/components/vendor/product-table";
+
+export default async function VendorProductsPage({
+  searchParams,
+}: {
+  searchParams: { search?: string; status?: string; page?: string };
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect("/login");
+
+  const vendorStore = await getVendorStore(session.user.id);
+  if (!vendorStore) redirect("/vendor");
+
+  const [data, stats] = await Promise.all([
+    getVendorProducts(vendorStore.id, {
+      search: searchParams.search,
+      status: (searchParams.status as ProductStatus | "ALL") ?? "ALL",
+      page: Number(searchParams.page ?? "1"),
+    }),
+    getVendorProductStats(vendorStore.id),
+  ]);
+
+  return (
+    <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-100" />}>
+      <ProductTable data={data} stats={stats} />
+    </Suspense>
+  );
 }
