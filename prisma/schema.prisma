@@ -30,6 +30,7 @@ enum VendorStatus {
 enum ProductStatus {
   DRAFT
   PENDING_REVIEW
+  CHANGES_REQUESTED
   ACTIVE
   REJECTED
   ARCHIVED
@@ -469,6 +470,9 @@ model Order {
   shippingTotal     Decimal         @default(0) @db.Decimal(12, 2)
   taxTotal          Decimal         @default(0) @db.Decimal(12, 2)
   grandTotal        Decimal         @db.Decimal(12, 2)
+  notes             String?
+  deliveredAt       DateTime?
+  cancelledAt       DateTime?
   items             OrderItem[]
   payments          Payment[]
   transactions      Transaction[]
@@ -476,6 +480,10 @@ model Order {
   timeline          OrderTimeline[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -571,16 +579,22 @@ model Dispute {
 }
 
 model Withdrawal {
-  id              String           @id @default(cuid())
-  vendorId        String
-  vendor          VendorProfile    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  amount          Decimal          @db.Decimal(12, 2)
-  method          PayoutMethod
-  status          WithdrawalStatus @default(REQUESTED)
-  requestedAt     DateTime         @default(now())
-  processedAt     DateTime?
-  rejectionReason String?
-  reference       String?
+  id                String           @id @default(cuid())
+  vendorId          String
+  vendor            VendorProfile    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  amount            Decimal          @db.Decimal(12, 2)
+  method            PayoutMethod
+  status            WithdrawalStatus @default(REQUESTED)
+  initiatedByAdmin  Boolean          @default(false)
+  adminNote         String?
+  requestedAt       DateTime         @default(now())
+  processedAt       DateTime?
+  paidAt            DateTime?
+  rejectionReason   String?
+  reference         String?
+
+  @@index([vendorId])
+  @@index([status])
 }
 
 model VendorLedgerEntry {

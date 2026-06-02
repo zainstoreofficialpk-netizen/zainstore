@@ -4,7 +4,7 @@ import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Check, ChevronDown, Image, Info,
-  Package, Plus, Search, Tag, Trash2, X,
+  Package, Plus, Search, Tag, Trash2, X, Upload, Star, Film,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -222,90 +222,272 @@ function Step1({ form, setForm, categories, brands }: {
 
 // ── Step 2 — Media ────────────────────────────────────────────────────────────
 
-function Step2({ form, setForm }: { form: ProductFormData; setForm: (f: ProductFormData) => void }) {
-  const [urlInput, setUrlInput] = useState("");
+const MAX_GALLERY = 4; // primary + 3 gallery = 4 total displayed slots
 
-  function addImage() {
-    if (!urlInput.trim()) return;
-    const newImg = { url: urlInput.trim(), alt: form.name, sortOrder: form.images.length };
-    setForm({ ...form, images: [...form.images, newImg] });
-    setUrlInput("");
+function Step2({ form, setForm }: { form: ProductFormData; setForm: (f: ProductFormData) => void }) {
+  const [imgUploading, setImgUploading] = useState<number | null>(null); // slot index being uploaded
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+
+  // ── Upload a single image file ─────────────────────────────────────────────
+
+  async function uploadImage(file: File, slotIndex: number) {
+    const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!ALLOWED.includes(file.type)) {
+      toast.error("Only JPG, PNG, or WEBP images allowed.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10 MB.");
+      return;
+    }
+
+    setImgUploading(slotIndex);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "image");
+
+      const res = await fetch("/api/vendor/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error ?? "Upload failed."); return; }
+
+      const newImg = { url: data.url as string, alt: form.name || file.name, sortOrder: slotIndex };
+      const imgs = [...form.images];
+
+      if (slotIndex < imgs.length) {
+        imgs[slotIndex] = { ...imgs[slotIndex], url: data.url, alt: form.name || file.name };
+      } else {
+        // Fill any gaps between current length and slotIndex with empty placeholders, then add
+        imgs.push(newImg);
+      }
+      setForm({ ...form, images: imgs.map((img, idx) => ({ ...img, sortOrder: idx })) });
+    } finally {
+      setImgUploading(null);
+    }
   }
 
   function removeImage(i: number) {
-    setForm({ ...form, images: form.images.filter((_, idx) => idx !== i).map((img, idx) => ({ ...img, sortOrder: idx })) });
+    const imgs = form.images.filter((_, idx) => idx !== i).map((img, idx) => ({ ...img, sortOrder: idx }));
+    setForm({ ...form, images: imgs });
   }
 
-  function setPrimary(i: number) {
-    const imgs = [...form.images];
-    const [primary] = imgs.splice(i, 1);
-    imgs.unshift(primary);
-    setForm({ ...form, images: imgs.map((img, idx) => ({ ...img, sortOrder: idx })) });
+  function handleImgDrop(e: React.DragEvent, slotIndex: number) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) uploadImage(file, slotIndex);
+  }
+
+  // ── Upload video ───────────────────────────────────────────────────────────
+
+  async function uploadVideo(file: File) {
+    const ALLOWED = ["video/mp4", "video/webm"];
+    if (!ALLOWED.includes(file.type)) {
+      toast.error("Only MP4 or WEBM videos allowed.");
+      return;
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error("Video must be under 30 MB.");
+      return;
+    }
+
+    setVideoUploading(true);
+    setVideoProgress(0);
+
+    // Use XMLHttpRequest for progress reporting
+    await new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "video");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setVideoProgress(Math.round((e.loaded / e.total) * 100));
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          setForm({ ...form, videoUrl: data.url });
+          toast.success("Video uploaded.");
+        } else {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            toast.error(data.error ?? "Video upload failed.");
+          } catch {
+            toast.error("Video upload failed.");
+          }
+        }
+        resolve();
+      };
+
+      xhr.onerror = () => { toast.error("Upload error."); resolve(); };
+      xhr.open("POST", "/api/vendor/upload");
+      xhr.send(fd);
+    });
+
+    setVideoUploading(false);
+    setVideoProgress(0);
+  }
+
+  // ── Render image slot ──────────────────────────────────────────────────────
+
+  function ImageSlot({ index, isPrimary }: { index: number; isPrimary: boolean }) {
+    const img = form.images[index];
+    const isLoading = imgUploading === index;
+
+    return (
+      <div
+        className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-colors
+          ${isPrimary ? "border-brand-400 bg-brand-50/30" : "border-zinc-200 bg-zinc-50"}
+          ${isLoading ? "opacity-60" : "hover:border-brand-300 hover:bg-brand-50/20"}`}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => handleImgDrop(e, index)}
+        onClick={() => {
+          const el = document.createElement("input");
+          el.type = "file";
+          el.accept = "image/jpeg,image/png,image/webp";
+          el.onchange = (ev) => {
+            const file = (ev.target as HTMLInputElement).files?.[0];
+            if (file) uploadImage(file, index);
+          };
+          el.click();
+        }}
+      >
+        {img?.url ? (
+          <>
+            <img src={img.url} alt={img.alt} className="absolute inset-0 h-full w-full object-cover" />
+            {isPrimary && (
+              <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+                <Star size={8} fill="white" /> Primary
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeImage(index); }}
+              className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-black/60 text-white hover:bg-rose-500"
+            >
+              <X size={11} />
+            </button>
+          </>
+        ) : isLoading ? (
+          <div className="flex flex-col items-center gap-2 text-brand-500">
+            <div className="size-6 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" />
+            <span className="text-[11px]">Uploading…</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 text-zinc-400 select-none">
+            <Upload size={isPrimary ? 22 : 18} />
+            <span className="text-center text-[11px] font-medium leading-tight px-1">
+              {isPrimary ? "Primary Image\nClick or drop" : `Gallery ${index}\nClick or drop`}
+            </span>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Images */}
+      {/* ── Images ─────────────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader><CardTitle>Product Images</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
-              placeholder="Paste image URL (JPG, PNG, WEBP)…"
-            />
-            <Button type="button" size="sm" variant="outline" onClick={addImage} className="shrink-0 gap-1.5">
-              <Plus size={14} /> Add
-            </Button>
+        <CardHeader>
+          <CardTitle>Product Images</CardTitle>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            Upload 1 primary image and up to 3 gallery images · JPG, PNG, WEBP · max 10 MB each
+          </p>
+        </CardHeader>
+        <CardContent>
+          {/* Primary + gallery layout */}
+          <div className="grid grid-cols-4 gap-3">
+            {/* Primary image — spans 2 rows visually via larger size on desktop */}
+            <div className="col-span-2 row-span-2">
+              <ImageSlot index={0} isPrimary={true} />
+            </div>
+            {/* Gallery slots */}
+            <ImageSlot index={1} isPrimary={false} />
+            <ImageSlot index={2} isPrimary={false} />
+            <ImageSlot index={3} isPrimary={false} />
+            <ImageSlot index={4} isPrimary={false} />
           </div>
-          <p className="text-xs text-zinc-400">Add up to 15 images. First image is the primary/featured image.</p>
 
-          {form.images.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-zinc-200 py-10 text-center">
-              <Image size={32} className="mx-auto mb-2 text-zinc-300" />
-              <p className="text-sm text-zinc-400">No images added yet</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-              {form.images.map((img, i) => (
-                <div key={i} className={`group relative rounded-lg overflow-hidden border-2 ${i === 0 ? "border-brand-400" : "border-zinc-200"}`}>
-                  <img src={img.url} alt={img.alt} className="aspect-square w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/150"; }} />
-                  {i === 0 && (
-                    <span className="absolute left-1 top-1 rounded-full bg-brand-500 px-1.5 py-0.5 text-[9px] font-bold text-white">Primary</span>
-                  )}
-                  <div className="absolute inset-0 hidden items-center justify-center gap-1 bg-black/40 group-hover:flex">
-                    {i !== 0 && (
-                      <button onClick={() => setPrimary(i)} className="rounded-md bg-white px-2 py-1 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100">
-                        Set primary
-                      </button>
-                    )}
-                    <button onClick={() => removeImage(i)} className="grid size-6 place-items-center rounded-md bg-rose-500 text-white hover:bg-rose-600">
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="mt-3 flex items-start gap-2 rounded-lg bg-zinc-50 px-3 py-2">
+            <Info size={13} className="mt-0.5 shrink-0 text-zinc-400" />
+            <p className="text-xs text-zinc-500">
+              The first image is your <strong>primary listing image</strong>. Click or drag a file onto any slot to upload. Click the × to remove.
+            </p>
+          </div>
+
+          {form.images.length === 0 && (
+            <p className="mt-2 text-center text-xs text-rose-500">At least one image is required to publish.</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Video */}
+      {/* ── Video ──────────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>Product Video</CardTitle>
-          <p className="mt-0.5 text-xs text-zinc-400">Short demo video URL (MP4, max 10 seconds)</p>
+          <CardTitle className="flex items-center gap-2">
+            <Film size={16} className="text-brand-600" /> Product Video
+          </CardTitle>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            Optional demo clip · MP4 or WEBM · max 30 MB
+          </p>
         </CardHeader>
-        <CardContent>
-          <Input
-            value={form.videoUrl}
-            onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-            placeholder="https://example.com/product-demo.mp4"
-          />
-          {form.videoUrl && (
-            <video src={form.videoUrl} controls className="mt-3 max-h-40 rounded-lg" />
+        <CardContent className="space-y-3">
+          {form.videoUrl ? (
+            <div className="relative">
+              <video
+                src={form.videoUrl}
+                controls
+                className="w-full max-h-56 rounded-xl border border-zinc-200 bg-black object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, videoUrl: "" })}
+                className="absolute right-2 top-2 flex items-center gap-1 rounded-lg bg-rose-500 px-2 py-1 text-xs font-medium text-white hover:bg-rose-600"
+              >
+                <Trash2 size={11} /> Remove
+              </button>
+            </div>
+          ) : (
+            <label
+              className={`flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed py-8 transition-colors
+                ${videoUploading ? "border-brand-300 bg-brand-50" : "border-zinc-200 hover:border-brand-300 hover:bg-brand-50/30"}`}
+            >
+              <input
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                disabled={videoUploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadVideo(file);
+                }}
+              />
+              {videoUploading ? (
+                <>
+                  <div className="size-8 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" />
+                  <div className="w-48 overflow-hidden rounded-full bg-zinc-200 h-1.5">
+                    <div
+                      className="h-1.5 rounded-full bg-brand-500 transition-all"
+                      style={{ width: `${videoProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-brand-600">{videoProgress}% uploading…</p>
+                </>
+              ) : (
+                <>
+                  <div className="grid size-12 place-items-center rounded-xl bg-zinc-100 text-zinc-400">
+                    <Upload size={22} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-zinc-700">Click to upload video</p>
+                    <p className="mt-0.5 text-xs text-zinc-400">MP4 or WEBM · max 30 MB</p>
+                  </div>
+                </>
+              )}
+            </label>
           )}
         </CardContent>
       </Card>

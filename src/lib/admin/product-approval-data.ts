@@ -45,12 +45,34 @@ export async function getProductsForApproval(filter: {
   return { products, total, page, totalPages: Math.ceil(total / LIMIT) };
 }
 
+// ── Full product data for the review page ─────────────────────────────────────
+
+export async function getProductForReview(productId: string) {
+  return db.product.findUnique({
+    where: { id: productId },
+    include: {
+      images: { orderBy: { sortOrder: "asc" } },
+      category: { select: { id: true, name: true } },
+      brand: { select: { id: true, name: true } },
+      variants: { orderBy: { createdAt: "asc" } },
+      vendor: {
+        include: {
+          user: { select: { name: true, email: true, createdAt: true } },
+          store: { select: { name: true, slug: true, logoUrl: true } },
+        },
+      },
+      _count: { select: { variants: true, reviews: true } },
+    },
+  });
+}
+
 export async function getAdminProductStats() {
-  const [pending, active, rejected, total] = await Promise.all([
+  const [pending, changesRequested, active, rejected, total] = await Promise.all([
     db.product.count({ where: { status: ProductStatus.PENDING_REVIEW } }),
+    db.product.count({ where: { status: ProductStatus.CHANGES_REQUESTED } }),
     db.product.count({ where: { status: ProductStatus.ACTIVE } }),
     db.product.count({ where: { status: ProductStatus.REJECTED } }),
     db.product.count(),
   ]);
-  return { pending, active, rejected, total };
+  return { pending, changesRequested, active, rejected, total };
 }

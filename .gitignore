@@ -7,3 +7,6 @@ dist
 prisma/*.db
 tsconfig.tsbuildinfo
 *.log
+
+# User-uploaded files (stored locally, not tracked in git)
+public/uploads/

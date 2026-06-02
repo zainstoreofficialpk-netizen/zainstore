@@ -19,8 +19,9 @@ type ProductList = Awaited<ReturnType<typeof getProductsForApproval>>;
 type Product = ProductList["products"][number];
 type Stats = Awaited<ReturnType<typeof getAdminProductStats>>;
 
-const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "muted"> = {
-  DRAFT: "muted", PENDING_REVIEW: "warning", ACTIVE: "success", REJECTED: "danger", ARCHIVED: "muted",
+const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "muted" | "accent"> = {
+  DRAFT: "muted", PENDING_REVIEW: "warning", CHANGES_REQUESTED: "accent",
+  ACTIVE: "success", REJECTED: "danger", ARCHIVED: "muted",
 };
 
 // ── Reject modal ──────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ export function ProductApprovalTable({
 
   const statCards = [
     { label: "Pending Review", value: stats.pending, status: "PENDING_REVIEW", color: "text-amber-600" },
+    { label: "Changes Requested", value: stats.changesRequested, status: "CHANGES_REQUESTED", color: "text-brand-600" },
     { label: "Active / Live", value: stats.active, status: "ACTIVE", color: "text-emerald-600" },
     { label: "Rejected", value: stats.rejected, status: "REJECTED", color: "text-rose-600" },
     { label: "All Products", value: stats.total, status: "ALL", color: "text-zinc-700" },
@@ -203,7 +205,7 @@ export function ProductApprovalTable({
       </div>
 
       {/* Stat filters */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {statCards.map((s) => (
           <button
             key={s.status}
@@ -256,20 +258,20 @@ export function ProductApprovalTable({
                 {data.products.map((product) => (
                   <tr key={product.id} className="hover:bg-zinc-50/60">
                     <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
+                      <Link href={`/admin/products/${product.id}`} className="flex items-center gap-3 group">
                         {product.images[0] ? (
                           <img src={product.images[0].url} alt={product.name}
-                            className="size-10 shrink-0 rounded-md object-cover border border-zinc-100" />
+                            className="size-10 shrink-0 rounded-md object-cover border border-zinc-100 group-hover:ring-2 group-hover:ring-brand-400" />
                         ) : (
                           <div className="size-10 shrink-0 rounded-md bg-zinc-100 grid place-items-center text-zinc-300">📷</div>
                         )}
                         <div className="min-w-0">
-                          <p className="truncate max-w-[180px] font-medium text-zinc-800">{product.name}</p>
-                          {product.status === "REJECTED" && product.rejectionReason && (
-                            <p className="text-xs text-rose-500 truncate max-w-[180px]">Rejected: {product.rejectionReason}</p>
+                          <p className="truncate max-w-[180px] font-medium text-zinc-800 group-hover:text-brand-600">{product.name}</p>
+                          {(product.status === "REJECTED" || product.status === "CHANGES_REQUESTED") && product.rejectionReason && (
+                            <p className="text-xs text-rose-500 truncate max-w-[180px]">{product.rejectionReason}</p>
                           )}
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-3 py-3">
                       <p className="text-sm text-zinc-700">{product.vendor?.store?.name ?? "—"}</p>

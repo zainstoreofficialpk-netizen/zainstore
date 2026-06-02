@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/api/health)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt -X POST http://localhost:3001/api/auth/callback/credentials -H 'Content-Type: application/x-www-form-urlencoded' -d 'email=admin%40zainstore.local&password=zainstore123&csrfToken=&callbackUrl=%2Fadmin%2Fcommissions&json=true' -w '\\\\nHTTP %{http_code}')",
+      "Bash(xargs cat -n)",
+      "Bash(curl -s \"http://localhost:3001/admin/commissions\" -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npm run *)",
+      "Bash(echo \"Restarting on port 3001 \\(PID $!\\)\")",
+      "Bash(npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' -e ' *)",
+      "Bash(docker exec *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(pkill -f \"next dev\" 2>/dev/null; sleep 2 && npm run dev -- --port 3001 > /tmp/nextjs-dev.log 2>&1 & *)",
+      "Bash(xargs ls -la)",
+      "Bash(mkdir -p \"/Users/apple/Documents/ZainStore/src/app/\\(dashboard\\)/admin/products/[id]\" && echo \"done\")"
+    ],
+    "additionalDirectories": [
+      "/private/tmp",
+      "/Users/apple/Documents/ZainStore/src/app/(dashboard)/admin/products"
+    ]
+  }
+}

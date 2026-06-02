@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { VendorStatus, WithdrawalStatus, RefundStatus, ProductStatus } from "@prisma/client";
+import { VendorStatus, WithdrawalStatus, RefundStatus, ProductStatus, NotificationType } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
@@ -181,15 +181,76 @@ export async function approveProduct(productId: string): Promise<ActionResult> {
 export async function rejectProduct(productId: string, reason: string): Promise<ActionResult> {
   try {
     await requireAdmin();
-    await db.product.update({
+    const product = await db.product.update({
       where: { id: productId },
       data: { status: ProductStatus.REJECTED, rejectionReason: reason },
+      include: { vendor: { select: { userId: true } } },
+    });
+    await db.notification.create({
+      data: {
+        userId: product.vendor.userId,
+        type: NotificationType.VENDOR,
+        title: "Product Rejected",
+        body: `Your product "${product.name}" was rejected. Reason: ${reason}`,
+      },
     });
     revalidatePath("/admin");
     revalidatePath("/admin/products");
-    return { success: true, message: "Product rejected." };
+    revalidatePath(`/admin/products/${productId}`);
+    return { success: true, message: "Product rejected and vendor notified." };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Failed to reject product." };
+  }
+}
+
+export async function requestProductChanges(productId: string, note: string): Promise<ActionResult> {
+  try {
+    await requireAdmin();
+    if (!note.trim()) return { success: false, error: "Please describe what changes are needed." };
+    const product = await db.product.update({
+      where: { id: productId },
+      data: { status: ProductStatus.CHANGES_REQUESTED, adminNote: note },
+      include: { vendor: { select: { userId: true } } },
+    });
+    await db.notification.create({
+      data: {
+        userId: product.vendor.userId,
+        type: NotificationType.VENDOR,
+        title: "Changes Requested for Product",
+        body: `Your product "${product.name}" needs changes before it can go live. Admin note: ${note}`,
+      },
+    });
+    revalidatePath("/admin");
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${productId}`);
+    return { success: true, message: "Changes requested and vendor notified." };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Failed to request changes." };
+  }
+}
+
+export async function approveProductById(productId: string): Promise<ActionResult> {
+  try {
+    await requireAdmin();
+    const product = await db.product.update({
+      where: { id: productId },
+      data: { status: ProductStatus.ACTIVE, rejectionReason: null, adminNote: null },
+      include: { vendor: { select: { userId: true } } },
+    });
+    await db.notification.create({
+      data: {
+        userId: product.vendor.userId,
+        type: NotificationType.VENDOR,
+        title: "Product Approved",
+        body: `Great news! Your product "${product.name}" has been approved and is now live on ZainStore.`,
+      },
+    });
+    revalidatePath("/admin");
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${productId}`);
+    return { success: true, message: "Product approved and vendor notified." };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Failed to approve product." };
   }
 }
 
