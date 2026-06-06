@@ -37,12 +37,12 @@ export async function submitWithdrawalRequest(formData: FormData): Promise<Actio
 
     const { amount, method } = parsed.data;
 
-    // Guard: no open request already pending
+    // Guard: no in-flight request already (REQUESTED, APPROVED, or PROCESSING)
     const open = await getOpenWithdrawalRequest(vendor.id);
     if (open) {
       return {
         success: false,
-        error: "You already have a pending withdrawal request. Wait for it to be processed first.",
+        error: "You already have a withdrawal request in progress. Wait for it to be resolved first.",
       };
     }
 
@@ -77,14 +77,21 @@ export async function cancelWithdrawalRequest(withdrawalId: string): Promise<Act
     const vendor = await requireVendor();
     const w = await db.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!w || w.vendorId !== vendor.id) return { success: false, error: "Not found." };
+
+    // Only REQUESTED withdrawals can be cancelled by the vendor.
+    // APPROVED or PROCESSING means admin has already started work — vendor must contact admin.
     if (w.status !== WithdrawalStatus.REQUESTED) {
-      return { success: false, error: "Only pending requests can be cancelled." };
+      return {
+        success: false,
+        error: "Only pending (not yet reviewed) requests can be cancelled. Contact admin to cancel an in-progress withdrawal.",
+      };
     }
-    // REVERSED = cancelled by vendor; keeps the record visible in history + restores balance
+
     await db.withdrawal.update({
       where: { id: withdrawalId },
-      data: { status: WithdrawalStatus.REVERSED, processedAt: new Date() },
+      data: { status: WithdrawalStatus.CANCELLED, processedAt: new Date() },
     });
+
     revalidatePath("/vendor/withdrawals");
     revalidatePath("/admin/withdrawals");
     return { success: true, message: "Withdrawal request cancelled. Your full balance is now available again." };

@@ -76,6 +76,7 @@ const STATUS_TONE: Record<string, "success" | "warning" | "accent" | "danger" | 
   PROCESSING: "accent",
   PAID: "success",
   REJECTED: "danger",
+  CANCELLED: "muted",
   REVERSED: "muted",
 };
 
@@ -551,7 +552,7 @@ function WithdrawalQueue({
     });
   }
 
-  const filters = ["ALL", "REQUESTED", "PROCESSING", "PAID", "REJECTED", "REVERSED"];
+  const filters = ["ALL", "REQUESTED", "PROCESSING", "PAID", "REJECTED", "CANCELLED", "REVERSED"];
 
   return (
     <>
@@ -582,7 +583,7 @@ function WithdrawalQueue({
                       : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                   }`}
                 >
-                  {f === "ALL" ? "All" : f === "REVERSED" ? "Cancelled" : f.charAt(0) + f.slice(1).toLowerCase()}
+                  {f === "ALL" ? "All" : f === "REVERSED" ? "Reversed" : f === "CANCELLED" ? "Cancelled" : f.charAt(0) + f.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
@@ -625,7 +626,7 @@ function WithdrawalQueue({
                       </td>
                       <td className="px-4 py-3">
                         <Badge tone={STATUS_TONE[w.status] ?? "muted"}>
-                          {w.status === "REVERSED" ? "Cancelled" : w.status}
+                          {w.status === "CANCELLED" ? "Cancelled" : w.status === "REVERSED" ? "Reversed" : w.status}
                         </Badge>
                         {w.rejectionReason && (
                           <p className="mt-0.5 text-[10px] text-rose-500 max-w-[140px] truncate" title={w.rejectionReason}>
@@ -684,7 +685,7 @@ function WithdrawalQueue({
                             </button>
                           </div>
                         )}
-                        {(w.status === "PAID" || w.status === "REJECTED") && (
+                        {["PAID", "REJECTED", "CANCELLED", "REVERSED"].includes(w.status) && (
                           <span className="text-xs text-zinc-300">—</span>
                         )}
                       </td>

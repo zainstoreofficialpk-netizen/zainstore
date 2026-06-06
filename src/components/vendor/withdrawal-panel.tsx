@@ -68,6 +68,7 @@ const STATUS_TONE: Record<string, "success" | "warning" | "accent" | "danger" | 
   PROCESSING: "accent",
   PAID: "success",
   REJECTED: "danger",
+  CANCELLED: "muted",
   REVERSED: "muted",
 };
 
@@ -77,7 +78,8 @@ const STATUS_LABEL: Record<string, string> = {
   PROCESSING: "Processing",
   PAID: "Paid",
   REJECTED: "Rejected",
-  REVERSED: "Cancelled by You",
+  CANCELLED: "Cancelled",
+  REVERSED: "Cancelled",
 };
 
 const METHODS = [
@@ -212,9 +214,12 @@ function RequestForm({
     });
   }
 
-  // ── Pending request already exists ────────────────────────────────────────
+  // ── In-flight request already exists ─────────────────────────────────────
 
   if (openRequest) {
+    const isRequested = openRequest.status === "REQUESTED";
+    const statusLabel = openRequest.status === "PROCESSING" ? "Being Processed" : openRequest.status === "APPROVED" ? "Approved by Admin" : "Pending Review";
+
     return (
       <Card className="border-amber-200 bg-amber-50/40">
         <CardContent className="pt-5">
@@ -222,7 +227,7 @@ function RequestForm({
             <div>
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-amber-600" />
-                <p className="font-semibold text-zinc-900">Request Under Review</p>
+                <p className="font-semibold text-zinc-900">{statusLabel}</p>
               </div>
               <p className="mt-1 text-2xl font-bold text-zinc-950">{formatCurrency(openRequest.amount)}</p>
               <p className="mt-0.5 text-xs text-zinc-500">
@@ -232,27 +237,32 @@ function RequestForm({
                 })}
               </p>
               <p className="mt-2 text-xs text-zinc-500">
-                This amount is reserved from your balance.
-                Cancel below to restore it to your available balance.
+                {isRequested
+                  ? "This amount is reserved from your balance. You can cancel it below to restore your balance."
+                  : "Admin has started processing this payment. Contact admin if you need changes."}
               </p>
             </div>
-            <Badge tone="warning">Pending</Badge>
+            <Badge tone={STATUS_TONE[openRequest.status] ?? "warning"}>
+              {STATUS_LABEL[openRequest.status] ?? openRequest.status}
+            </Badge>
           </div>
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              disabled={isPending}
-              className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100"
-            >
-              <Ban size={13} />
-              {isPending ? "Cancelling…" : "Cancel This Request"}
-            </Button>
-            <p className="mt-1.5 text-[10px] text-zinc-400">
-              Cancelling will immediately restore {formatCurrency(openRequest.amount)} to your available balance.
-            </p>
-          </div>
+          {isRequested && (
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                disabled={isPending}
+                className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                <Ban size={13} />
+                {isPending ? "Cancelling…" : "Cancel This Request"}
+              </Button>
+              <p className="mt-1.5 text-[10px] text-zinc-400">
+                Cancelling will immediately restore {formatCurrency(openRequest.amount)} to your available balance.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

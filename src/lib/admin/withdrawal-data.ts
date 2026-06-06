@@ -4,12 +4,11 @@ import { OrderStatus, PaymentStatus, WithdrawalStatus, RefundStatus } from "@pri
 // Days after delivery before earnings unlock for withdrawal
 export const EARNINGS_HOLD_DAYS = 7;
 
-// Statuses that "lock" a portion of vendor balance (prevent double-requesting)
-const COMMITTED_STATUSES: WithdrawalStatus[] = [
+// Statuses that reserve a portion of vendor balance
+const IN_FLIGHT_STATUSES: WithdrawalStatus[] = [
   WithdrawalStatus.REQUESTED,
   WithdrawalStatus.APPROVED,
   WithdrawalStatus.PROCESSING,
-  WithdrawalStatus.PAID,
 ];
 
 // ── Shared eligibility filter ─────────────────────────────────────────────────
@@ -19,7 +18,7 @@ const COMMITTED_STATUSES: WithdrawalStatus[] = [
 //   3. order.deliveredAt is set   (admin explicitly confirmed delivery)
 //   4. deliveredAt + HOLD_DAYS < now  (holding period elapsed)
 //   5. customer ≠ vendor's own user  (no self-purchases)
-//   6. no approved/processed refund on the order  (no refund clawback pending)
+//   6. no approved/processed refund on the order
 
 function holdCutoff(): Date {
   const d = new Date();
@@ -44,7 +43,6 @@ function eligibleOrderWhere(vendorUserId: string) {
 // ── Per-vendor balance calculation ────────────────────────────────────────────
 
 export async function calcVendorBalance(vendorId: string) {
-  // Need vendor's userId for self-purchase guard
   const vendor = await db.vendorProfile.findUnique({
     where: { id: vendorId },
     select: { userId: true },
@@ -73,18 +71,16 @@ export async function calcVendorBalance(vendorId: string) {
         },
       },
     }),
-    // Already paid out to vendor (terminal — reduces earning pool)
+    // Already paid out (terminal)
     db.withdrawal.aggregate({
       _sum: { amount: true },
       where: { vendorId, status: WithdrawalStatus.PAID },
     }),
-    // Currently in-flight (requested / approved / processing)
+    // In-flight requests (REQUESTED | APPROVED | PROCESSING) — reserves balance
+    // CANCELLED, REJECTED, REVERSED are excluded so balance is automatically restored
     db.withdrawal.aggregate({
       _sum: { amount: true },
-      where: {
-        vendorId,
-        status: { in: [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED, WithdrawalStatus.PROCESSING] },
-      },
+      where: { vendorId, status: { in: IN_FLIGHT_STATUSES } },
     }),
   ]);
 
@@ -98,7 +94,7 @@ export async function calcVendorBalance(vendorId: string) {
 
   const paidOut = Number(paidOutAgg._sum?.amount ?? 0);
   const inProgress = Number(inProgressAgg._sum?.amount ?? 0);
-  const committed = paidOut + inProgress;                         // total deducted from available
+  const committed = paidOut + inProgress;
   const available = Math.max(0, vendorEarnings - committed);
 
   return { grossEarnings, totalCommission, vendorEarnings, heldEarnings, paidOut, inProgress, committed, available };
@@ -152,7 +148,7 @@ export async function getAllVendorBalances() {
 // ── Withdrawal list for admin (paginated, with filter) ────────────────────────
 
 export type WithdrawalFilter =
-  | "ALL" | "REQUESTED" | "APPROVED" | "PROCESSING" | "PAID" | "REJECTED" | "REVERSED";
+  | "ALL" | "REQUESTED" | "APPROVED" | "PROCESSING" | "PAID" | "REJECTED" | "CANCELLED" | "REVERSED";
 
 export async function getAdminWithdrawals(filter: WithdrawalFilter = "ALL", page = 1) {
   const LIMIT = 25;
@@ -179,6 +175,7 @@ export async function getAdminWithdrawals(filter: WithdrawalFilter = "ALL", page
       db.withdrawal.count({ where: { status: "PROCESSING" } }),
       db.withdrawal.count({ where: { status: "PAID" } }),
       db.withdrawal.count({ where: { status: "REJECTED" } }),
+      db.withdrawal.count({ where: { status: "CANCELLED" } }),
       db.withdrawal.aggregate({ _sum: { amount: true }, where: { status: "REQUESTED" } }),
       db.withdrawal.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }),
     ]),
@@ -193,8 +190,9 @@ export async function getAdminWithdrawals(filter: WithdrawalFilter = "ALL", page
       processing: stats[1],
       paid: stats[2],
       rejected: stats[3],
-      pendingAmount: Number(stats[4]._sum.amount ?? 0),
-      paidAmount: Number(stats[5]._sum.amount ?? 0),
+      cancelled: stats[4],
+      pendingAmount: Number(stats[5]._sum.amount ?? 0),
+      paidAmount: Number(stats[6]._sum.amount ?? 0),
     },
   };
 }

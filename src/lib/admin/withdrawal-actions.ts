@@ -11,6 +11,13 @@ import { calcVendorBalance } from "@/lib/admin/withdrawal-data";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
+// Statuses that can still be acted on (not yet in a terminal state)
+const ACTIONABLE_STATUSES: WithdrawalStatus[] = [
+  WithdrawalStatus.REQUESTED,
+  WithdrawalStatus.APPROVED,
+  WithdrawalStatus.PROCESSING,
+];
+
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -67,7 +74,6 @@ export async function adminCreatePayout(formData: FormData): Promise<ActionResul
       };
     }
 
-    // If reference provided, mark directly as PAID; otherwise PROCESSING
     const isPaid = !!reference;
     await db.withdrawal.create({
       data: {
@@ -137,7 +143,7 @@ export async function processWithdrawal(withdrawalId: string, note?: string): Pr
   }
 }
 
-// ── Mark PROCESSING → PAID ────────────────────────────────────────────────────
+// ── Mark REQUESTED or PROCESSING → PAID ──────────────────────────────────────
 
 const markPaidSchema = z.object({
   reference: z.string().min(1, "Reference / transaction ID is required"),
@@ -185,7 +191,7 @@ export async function markWithdrawalPaid(withdrawalId: string, formData: FormDat
   }
 }
 
-// ── Reject a withdrawal request ───────────────────────────────────────────────
+// ── Reject a withdrawal (only while still actionable) ────────────────────────
 
 export async function rejectWithdrawal(withdrawalId: string, reason: string): Promise<ActionResult> {
   try {
@@ -194,8 +200,12 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string): Pr
 
     const w = await db.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!w) return { success: false, error: "Withdrawal not found." };
-    if (w.status === WithdrawalStatus.PAID) {
-      return { success: false, error: "Cannot reject a withdrawal that has already been paid." };
+
+    if (!ACTIONABLE_STATUSES.includes(w.status)) {
+      return {
+        success: false,
+        error: `Cannot reject a withdrawal with status "${w.status}". Only REQUESTED, APPROVED, or PROCESSING withdrawals can be rejected.`,
+      };
     }
 
     await db.withdrawal.update({
@@ -210,11 +220,11 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string): Pr
     await notifyVendor(
       w.vendorId,
       "Withdrawal Rejected",
-      `Your withdrawal request of PKR ${Number(w.amount).toLocaleString()} was rejected. Reason: ${reason}`,
+      `Your withdrawal request of PKR ${Number(w.amount).toLocaleString()} was rejected. Reason: ${reason}. The amount has been returned to your available balance — you can submit a new request.`,
     );
 
     revalidatePath("/admin/withdrawals");
-    return { success: true, message: "Withdrawal rejected and vendor notified." };
+    return { success: true, message: "Withdrawal rejected and vendor notified. Balance automatically restored." };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Failed to reject withdrawal." };
   }

@@ -15,7 +15,9 @@
       "Bash(grep -E \"\\\\.ts$\")",
       "Bash(pkill -f \"next dev\" 2>/dev/null; sleep 2 && npm run dev -- --port 3001 > /tmp/nextjs-dev.log 2>&1 & *)",
       "Bash(xargs ls -la)",
-      "Bash(mkdir -p \"/Users/apple/Documents/ZainStore/src/app/\\(dashboard\\)/admin/products/[id]\" && echo \"done\")"
+      "Bash(mkdir -p \"/Users/apple/Documents/ZainStore/src/app/\\(dashboard\\)/admin/products/[id]\" && echo \"done\")",
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
       "/private/tmp",

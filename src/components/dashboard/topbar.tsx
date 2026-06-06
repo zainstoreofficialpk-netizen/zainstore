@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth/config";
 import { ProfileDropdown } from "@/components/dashboard/profile-dropdown";
 import { AdminNotificationBell } from "@/components/dashboard/admin-notification-bell";
 import { VendorNotificationBell } from "@/components/dashboard/vendor-notification-bell";
+import { CustomerNotificationBell } from "@/components/dashboard/customer-notification-bell";
 
 type TopbarProps = { title: string; subtitle: string };
 
@@ -34,6 +35,7 @@ export async function Topbar({ title, subtitle }: TopbarProps) {
 
           {user?.role === "SUPER_ADMIN" && <AdminNotificationBell />}
           {user?.role === "VENDOR" && <VendorNotificationBell />}
+          {user?.role === "CUSTOMER" && <CustomerNotificationBell />}
 
           <ProfileDropdown
             name={user?.name ?? "User"}

@@ -8,7 +8,14 @@ function holdCutoff(): Date {
   return d;
 }
 
-// ── Vendor balance (mirrors admin calc, vendor-scoped) ────────────────────────
+// Statuses that reserve a portion of the vendor's balance (prevent double-requesting)
+const IN_FLIGHT_STATUSES: WithdrawalStatus[] = [
+  WithdrawalStatus.REQUESTED,
+  WithdrawalStatus.APPROVED,
+  WithdrawalStatus.PROCESSING,
+];
+
+// ── Vendor balance (vendor-scoped) ────────────────────────────────────────────
 
 export async function getVendorBalance(vendorId: string) {
   const vendor = await db.vendorProfile.findUnique({
@@ -17,23 +24,28 @@ export async function getVendorBalance(vendorId: string) {
   });
   if (!vendor) return { grossEarnings: 0, totalCommission: 0, vendorEarnings: 0, heldEarnings: 0, paidOut: 0, inProgress: 0, committed: 0, available: 0 };
 
-  const eligibleOrderWhere = {
-    status: OrderStatus.DELIVERED,
-    paymentStatus: PaymentStatus.PAID,
-    deliveredAt: { not: null, lte: holdCutoff() },
-    customerId: { not: vendor.userId },
+  const refundExclusion = {
     refundRequests: {
       none: { status: { in: [RefundStatus.APPROVED, RefundStatus.PROCESSED] as RefundStatus[] } },
     },
   };
 
   const [earningsAgg, heldAgg, paidOutAgg, inProgressAgg] = await Promise.all([
-    // Eligible (past hold period)
+    // Eligible (delivered, paid, past hold period, no approved refunds)
     db.orderItem.aggregate({
       _sum: { lineTotal: true, commissionTotal: true },
-      where: { vendorId, order: eligibleOrderWhere },
+      where: {
+        vendorId,
+        order: {
+          status: OrderStatus.DELIVERED,
+          paymentStatus: PaymentStatus.PAID,
+          deliveredAt: { not: null, lte: holdCutoff() },
+          customerId: { not: vendor.userId },
+          ...refundExclusion,
+        },
+      },
     }),
-    // Held (inside hold window — delivered but not yet unlocked)
+    // Held (delivered, paid, still within hold window)
     db.orderItem.aggregate({
       _sum: { lineTotal: true, commissionTotal: true },
       where: {
@@ -43,24 +55,20 @@ export async function getVendorBalance(vendorId: string) {
           paymentStatus: PaymentStatus.PAID,
           deliveredAt: { not: null, gt: holdCutoff() },
           customerId: { not: vendor.userId },
-          refundRequests: {
-            none: { status: { in: [RefundStatus.APPROVED, RefundStatus.PROCESSED] } },
-          },
+          ...refundExclusion,
         },
       },
     }),
-    // Already paid out
+    // Already paid out (terminal — permanently reduces pool)
     db.withdrawal.aggregate({
       _sum: { amount: true },
       where: { vendorId, status: WithdrawalStatus.PAID },
     }),
-    // Currently in-flight
+    // In-flight (REQUESTED | APPROVED | PROCESSING) — reserves balance
+    // CANCELLED, REJECTED, REVERSED are excluded so balance is automatically restored
     db.withdrawal.aggregate({
       _sum: { amount: true },
-      where: {
-        vendorId,
-        status: { in: [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED, WithdrawalStatus.PROCESSING] },
-      },
+      where: { vendorId, status: { in: IN_FLIGHT_STATUSES } },
     }),
   ]);
 
@@ -80,13 +88,15 @@ export async function getVendorBalance(vendorId: string) {
   return { grossEarnings, totalCommission, vendorEarnings, heldEarnings, paidOut, inProgress, committed, available };
 }
 
-// ── Check if vendor already has an open request ───────────────────────────────
+// ── Check if vendor already has an open (in-flight) request ──────────────────
+// Includes PROCESSING so admin cannot move a request to processing while vendor
+// thinks their request disappeared and submits another one.
 
 export async function getOpenWithdrawalRequest(vendorId: string) {
   return db.withdrawal.findFirst({
     where: {
       vendorId,
-      status: { in: [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED] },
+      status: { in: IN_FLIGHT_STATUSES },
     },
     orderBy: { requestedAt: "desc" },
   });
@@ -119,6 +129,12 @@ export async function getVendorEarningsBreakdown(vendorId: string, limit = 20) {
         paymentStatus: PaymentStatus.PAID,
         deliveredAt: { not: null },
         customerId: { not: vendor.userId },
+        // Exclude orders where a refund was approved/processed
+        refundRequests: {
+          none: {
+            status: { in: [RefundStatus.APPROVED, RefundStatus.PROCESSED] as RefundStatus[] },
+          },
+        },
       },
     },
     include: {

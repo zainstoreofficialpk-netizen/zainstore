@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { z } from "zod";
 import { OrderStatus, PaymentStatus, NotificationType } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth/config";
@@ -10,14 +9,36 @@ import { db } from "@/lib/db";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
-// Valid forward-only transitions (prevents rolling back delivered status)
+// Full status progression — forward-only transitions only
 const VALID_TRANSITIONS: Record<string, OrderStatus[]> = {
-  PENDING:    [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-  PROCESSING: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
-  SHIPPED:    [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
-  DELIVERED:  [],   // terminal — only refund process can move from here
-  CANCELLED:  [],   // terminal
-  REFUNDED:   [],   // terminal
+  PENDING:            [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  PROCESSING:         [OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
+  READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+  SHIPPED:            [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+  OUT_FOR_DELIVERY:   [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+  DELIVERED:          [],
+  CANCELLED:          [],
+  REFUNDED:           [],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING:            "Order Placed",
+  PROCESSING:         "Vendor Processing",
+  READY_FOR_DISPATCH: "Ready for Dispatch",
+  SHIPPED:            "Dispatched / Shipped",
+  OUT_FOR_DELIVERY:   "Out for Delivery",
+  DELIVERED:          "Delivered",
+  CANCELLED:          "Cancelled",
+  REFUNDED:           "Refunded",
+};
+
+const STATUS_MESSAGES: Record<string, string> = {
+  PROCESSING:         "Good news! Your order is being prepared by the vendor.",
+  READY_FOR_DISPATCH: "Your order is packed and ready to be dispatched.",
+  SHIPPED:            "Your order is on its way!",
+  OUT_FOR_DELIVERY:   "Your order is out for delivery — expect it today!",
+  DELIVERED:          "Your order has been delivered. We hope you love it!",
+  CANCELLED:          "Your order has been cancelled.",
 };
 
 async function requireAdmin() {
@@ -25,6 +46,19 @@ async function requireAdmin() {
   if (!session?.user?.id) throw new Error("Unauthorized");
   if (session.user.role !== "SUPER_ADMIN") throw new Error("Forbidden");
   return session.user;
+}
+
+async function notifyCustomer(customerId: string, orderNumber: string, status: string) {
+  const msg = STATUS_MESSAGES[status];
+  if (!msg) return;
+  await db.notification.create({
+    data: {
+      userId: customerId,
+      type: NotificationType.ORDER,
+      title: `Order ${orderNumber} — ${STATUS_LABELS[status] ?? status}`,
+      body: msg,
+    },
+  });
 }
 
 async function notifyOrderVendors(orderId: string, title: string, body: string) {
@@ -36,36 +70,25 @@ async function notifyOrderVendors(orderId: string, title: string, body: string) 
   await Promise.all(
     vendors.map((item) =>
       db.notification.create({
-        data: {
-          userId: item.vendor.userId,
-          type: NotificationType.ORDER,
-          title,
-          body,
-        },
+        data: { userId: item.vendor.userId, type: NotificationType.ORDER, title, body },
       }),
     ),
   );
 }
 
-// ── Update order status (admin only) ─────────────────────────────────────────
-
-const updateStatusSchema = z.object({
-  orderId: z.string().min(1),
-  newStatus: z.nativeEnum(OrderStatus),
-  note: z.string().optional(),
-});
+// ── Update order status ───────────────────────────────────────────────────────
 
 export async function updateOrderStatus(
   orderId: string,
   newStatus: OrderStatus,
-  note?: string,
+  extra?: { note?: string; trackingNumber?: string; trackingUrl?: string; estimatedDelivery?: string },
 ): Promise<ActionResult> {
   try {
     await requireAdmin();
 
     const order = await db.order.findUnique({
       where: { id: orderId },
-      select: { id: true, status: true, orderNumber: true },
+      select: { id: true, status: true, orderNumber: true, customerId: true },
     });
     if (!order) return { success: false, error: "Order not found." };
 
@@ -73,60 +96,56 @@ export async function updateOrderStatus(
     if (!allowed.includes(newStatus)) {
       return {
         success: false,
-        error: `Cannot move order from ${order.status} to ${newStatus}. Allowed: ${allowed.join(", ") || "none"}.`,
+        error: `Cannot move from ${order.status} → ${newStatus}. Allowed: ${allowed.join(", ") || "none"}.`,
       };
     }
 
     const now = new Date();
-    const data: Record<string, unknown> = { status: newStatus, updatedAt: now };
+    const data: Record<string, unknown> = { status: newStatus };
 
-    if (newStatus === OrderStatus.DELIVERED) {
-      data.deliveredAt = now;     // unlocks earning clock
-    }
-    if (newStatus === OrderStatus.CANCELLED) {
-      data.cancelledAt = now;
-    }
+    if (newStatus === OrderStatus.DELIVERED) data.deliveredAt = now;
+    if (newStatus === OrderStatus.CANCELLED) data.cancelledAt = now;
+    if (extra?.trackingNumber) data.trackingNumber = extra.trackingNumber;
+    if (extra?.trackingUrl) data.trackingUrl = extra.trackingUrl;
+    if (extra?.estimatedDelivery) data.estimatedDelivery = new Date(extra.estimatedDelivery);
 
     await db.order.update({ where: { id: orderId }, data });
 
-    // Write to order timeline
     await db.orderTimeline.create({
       data: {
         orderId,
         status: newStatus,
-        note: note ?? `Status updated to ${newStatus} by admin`,
+        note: extra?.note ?? `Status updated to ${STATUS_LABELS[newStatus] ?? newStatus} by admin`,
       },
     });
 
-    // Notify vendor(s)
-    const statusLabels: Record<string, string> = {
-      PROCESSING: "is now being processed",
-      SHIPPED:    "has been shipped",
-      DELIVERED:  "has been marked as delivered — earnings will unlock in 7 days",
-      CANCELLED:  "has been cancelled",
-    };
+    // Notify customer on every status change
+    await notifyCustomer(order.customerId, order.orderNumber, newStatus);
+
+    // Notify vendors
     await notifyOrderVendors(
       orderId,
-      `Order ${order.orderNumber} — ${newStatus}`,
-      `Your order ${order.orderNumber} ${statusLabels[newStatus] ?? `moved to ${newStatus}`}.`,
+      `Order ${order.orderNumber} — ${STATUS_LABELS[newStatus] ?? newStatus}`,
+      `Order ${order.orderNumber} moved to "${STATUS_LABELS[newStatus] ?? newStatus}".`,
     );
 
     revalidatePath("/admin/orders");
     revalidatePath("/vendor/orders");
+    revalidatePath("/customer/orders");
 
     return {
       success: true,
       message:
         newStatus === OrderStatus.DELIVERED
-          ? `Order marked as Delivered. Vendor earnings will unlock after ${7}-day holding period.`
-          : `Order moved to ${newStatus}.`,
+          ? `Order marked Delivered. Vendor earnings unlock after 7-day hold.`
+          : `Order moved to "${STATUS_LABELS[newStatus] ?? newStatus}".`,
     };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Failed to update order." };
   }
 }
 
-// ── Update payment status (admin only) ───────────────────────────────────────
+// ── Update payment status ─────────────────────────────────────────────────────
 
 export async function updatePaymentStatus(
   orderId: string,
@@ -141,7 +160,6 @@ export async function updatePaymentStatus(
     });
     if (!order) return { success: false, error: "Order not found." };
 
-    // Only allow: PENDING → PAID, PAID → REFUNDED
     if (order.paymentStatus === "PAID" && newStatus !== PaymentStatus.REFUNDED) {
       return { success: false, error: "Paid orders can only be moved to Refunded." };
     }
@@ -161,11 +179,11 @@ export async function updatePaymentStatus(
     revalidatePath("/admin/orders");
     return { success: true, message: `Payment status updated to ${newStatus}.` };
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : "Failed to update payment status." };
+    return { success: false, error: e instanceof Error ? e.message : "Failed to update payment." };
   }
 }
 
-// ── Add note to order ─────────────────────────────────────────────────────────
+// ── Add note ──────────────────────────────────────────────────────────────────
 
 export async function addOrderNote(orderId: string, note: string): Promise<ActionResult> {
   try {
@@ -174,12 +192,9 @@ export async function addOrderNote(orderId: string, note: string): Promise<Actio
 
     const existing = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
     if (!existing) return { success: false, error: "Order not found." };
+
     await db.orderTimeline.create({
-      data: {
-        orderId,
-        status: existing.status,
-        note: note.trim(),
-      },
+      data: { orderId, status: existing.status, note: note.trim() },
     });
 
     revalidatePath("/admin/orders");
