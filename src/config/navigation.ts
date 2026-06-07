@@ -8,6 +8,7 @@ import {
   FileBarChart,
   FolderTree,
   Home,
+  Image,
   LifeBuoy,
   MessageSquare,
   PackageCheck,
@@ -46,6 +47,7 @@ export const adminNavigation: NavItem[] = [
   { title: "Shipping", href: "/admin/shipping", icon: Truck },
   { title: "Reports", href: "/admin/reports", icon: FileBarChart },
   { title: "Notifications", href: "/admin/notifications", icon: Bell },
+  { title: "Banners", href: "/admin/banners", icon: Image },
   { title: "Support", href: "/admin/support", icon: LifeBuoy },
   { title: "Settings", href: "/admin/settings", icon: Settings },
 ];
@@ -62,6 +64,7 @@ export const vendorNavigation: NavItem[] = [
   { title: "Analytics", href: "/vendor/analytics", icon: BarChart3 },
   { title: "Messages", href: "/vendor/messages", icon: MessageSquare },
   { title: "Notifications", href: "/vendor/notifications", icon: Bell },
+  { title: "Settings", href: "/vendor/settings", icon: Settings },
 ];
 
 export const customerNavigation: NavItem[] = [

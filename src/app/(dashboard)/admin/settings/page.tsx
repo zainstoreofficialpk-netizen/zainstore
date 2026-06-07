@@ -2,47 +2,68 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { AdminSettingsShell } from "@/components/admin/admin-settings-shell";
+
+export const metadata = { title: "Settings — Admin" };
 
 export default async function AdminSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+  if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") redirect("/login");
 
-  const settings = await db.settings.findMany({ orderBy: [{ group: "asc" }, { key: "asc" }] });
-  const groups = [...new Set(settings.map((s) => s.group))];
+  const [user, platformSettings, activityLogs] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        image: true,
+        emailVerified: true,
+        notificationPreferences: true,
+        twoFactorEnabled: true,
+        createdAt: true,
+      },
+    }),
+    db.settings.findMany({ orderBy: [{ group: "asc" }, { key: "asc" }] }),
+    db.activityLog.findMany({
+      where: { actorId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
+
+  if (!user) redirect("/login");
 
   return (
-    <div className="space-y-6">
-      <div><h2 className="text-lg font-bold text-zinc-950">Platform Settings</h2>
-        <p className="mt-0.5 text-sm text-zinc-400">Key-value configuration settings stored in the database.</p></div>
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-bold text-zinc-950">Settings</h2>
+        <p className="mt-0.5 text-sm text-zinc-400">Manage your profile, platform configuration, and system preferences.</p>
+      </div>
 
-      {settings.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-sm text-zinc-400">
-          No settings configured yet. Settings are stored in the database under key-value pairs.
-        </CardContent></Card>
-      ) : (
-        groups.map((group) => (
-          <Card key={group}>
-            <CardHeader><CardTitle className="capitalize">{group}</CardTitle></CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-zinc-50">
-                {settings.filter((s) => s.group === group).map((s) => (
-                  <div key={s.id} className="flex items-center justify-between px-5 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-zinc-800">{s.key}</p>
-                      {s.description && <p className="text-xs text-zinc-400 mt-0.5">{s.description}</p>}
-                    </div>
-                    <Badge tone="muted" className="font-mono text-xs max-w-[200px] truncate">
-                      {JSON.stringify(s.value).slice(0, 40)}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
+      <AdminSettingsShell
+        user={{
+          ...user,
+          emailVerified: user.emailVerified?.toISOString() ?? null,
+          notificationPreferences: (user.notificationPreferences as Record<string, boolean>) ?? null,
+          createdAt: user.createdAt.toISOString(),
+        }}
+        platformSettings={platformSettings.map((s) => ({
+          key: s.key,
+          value: s.value,
+          group: s.group,
+          description: s.description ?? undefined,
+        }))}
+        activityLogs={activityLogs.map((log) => ({
+          id: log.id,
+          action: log.action,
+          entity: log.entity,
+          entityId: log.entityId,
+          ipAddress: log.ipAddress,
+          createdAt: log.createdAt.toISOString(),
+        }))}
+      />
     </div>
   );
 }
