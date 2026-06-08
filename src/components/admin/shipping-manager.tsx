@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, Save, Package, Truck } from "lucide-react";
+import { Plus, Trash2, Save, Package, Truck, MapPin, ChevronDown, ChevronRight, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
 import { saveShippingRatesAction } from "@/lib/admin/shipping-actions";
 import type { ShippingSettings, ShippingTier } from "@/lib/shipping";
+import { CITIES_BY_PROVINCE, PROVINCES } from "@/lib/checkout/pakistan-data";
 
 function newTier(): ShippingTier {
   return {
@@ -257,6 +258,9 @@ export function ShippingManager({ settings }: { settings: ShippingSettings }) {
           <ShippingCalculator tiers={sorted.filter((t) => t.minWeight > 0 && t.maxWeight > 0)} />
         </div>
       </div>
+
+      {/* ── City-Based Delivery Charges ─────────────────────────────── */}
+      <CityRatesSection />
     </div>
   );
 }
@@ -308,5 +312,217 @@ function ShippingCalculator({ tiers }: { tiers: ShippingTier[] }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ── City-based delivery charges section ──────────────────────────────────────
+
+const MAJOR_CITIES = new Set([
+  "Islamabad","Karachi","Lahore","Rawalpindi","Faisalabad",
+  "Multan","Peshawar","Quetta","Sialkot","Gujranwala","Hyderabad","Bahawalpur",
+]);
+const REMOTE_PROVINCES = new Set([
+  "Balochistan","Gilgit-Baltistan","Azad Kashmir",
+]);
+
+const DELIVERY_TIERS = [
+  {
+    id: "major",
+    label: "Major Cities",
+    badge: "bg-blue-100 text-blue-700",
+    dot: "bg-blue-500",
+    standard: 150,
+    express: 300,
+    standardDays: "2–4 days",
+    expressDays: "1–2 days",
+    description: "Islamabad, Karachi, Lahore, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Sialkot, Gujranwala, Hyderabad, Bahawalpur",
+  },
+  {
+    id: "standard",
+    label: "Standard Cities",
+    badge: "bg-amber-100 text-amber-700",
+    dot: "bg-amber-500",
+    standard: 200,
+    express: 400,
+    standardDays: "3–5 days",
+    expressDays: "2–3 days",
+    description: "All other cities in Punjab, Sindh & KPK not listed as major cities",
+  },
+  {
+    id: "remote",
+    label: "Remote Areas",
+    badge: "bg-rose-100 text-rose-700",
+    dot: "bg-rose-500",
+    standard: 350,
+    express: 600,
+    standardDays: "7–10 days",
+    expressDays: "3–5 days",
+    description: "Balochistan, Gilgit-Baltistan, Azad Kashmir and surrounding areas",
+  },
+];
+
+function CityRatesSection() {
+  const [openProvince, setOpenProvince] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  function getTier(city: string, province: string) {
+    if (REMOTE_PROVINCES.has(province)) return DELIVERY_TIERS[2];
+    if (MAJOR_CITIES.has(city)) return DELIVERY_TIERS[0];
+    return DELIVERY_TIERS[1];
+  }
+
+  const filteredProvinces = PROVINCES.filter((p) => {
+    if (!search) return true;
+    const cities = CITIES_BY_PROVINCE[p] ?? [];
+    return (
+      p.toLowerCase().includes(search.toLowerCase()) ||
+      cities.some((c) => c.toLowerCase().includes(search.toLowerCase()))
+    );
+  });
+
+  return (
+    <div className="space-y-5 pt-2">
+      {/* Section header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-zinc-950 flex items-center gap-2">
+            <MapPin size={16} className="text-brand-500" />
+            City-Based Delivery Charges
+          </h2>
+          <p className="mt-0.5 text-sm text-zinc-400">
+            Checkout automatically applies these rates based on the customer&apos;s city.
+          </p>
+        </div>
+        <span className="text-xs bg-zinc-100 text-zinc-500 px-2.5 py-1 rounded-full font-medium shrink-0">
+          Sample / Reference
+        </span>
+      </div>
+
+      {/* Tier summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {DELIVERY_TIERS.map((tier) => (
+          <div key={tier.id} className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full shrink-0 ${tier.dot}`} />
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${tier.badge}`}>
+                {tier.label}
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <Truck size={12} />
+                  <span>Standard</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-zinc-900">{formatCurrency(tier.standard)}</p>
+                  <p className="text-[10px] text-zinc-400">{tier.standardDays}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <Zap size={12} />
+                  <span>Express</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-zinc-900">{formatCurrency(tier.express)}</p>
+                  <p className="text-[10px] text-zinc-400">{tier.expressDays}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-400 leading-relaxed border-t border-zinc-100 pt-2">
+              {tier.description}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* City lookup table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>All Cities &amp; Rates</CardTitle>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search city or province..."
+              className="h-8 w-56 px-3 border border-zinc-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
+          </div>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {PROVINCES.reduce((s, p) => s + (CITIES_BY_PROVINCE[p]?.length ?? 0), 0)} cities across{" "}
+            {PROVINCES.length} provinces
+          </p>
+        </CardHeader>
+        <CardContent className="p-0 divide-y divide-zinc-50">
+          {filteredProvinces.map((province) => {
+            const cities = (CITIES_BY_PROVINCE[province] ?? []).filter(
+              (c) => !search || c.toLowerCase().includes(search.toLowerCase()) || province.toLowerCase().includes(search.toLowerCase())
+            );
+            if (cities.length === 0) return null;
+            const isOpen = openProvince === province || !!search;
+            const isRemote = REMOTE_PROVINCES.has(province);
+
+            return (
+              <div key={province}>
+                {/* Province row */}
+                <button
+                  type="button"
+                  onClick={() => setOpenProvince(isOpen && !search ? null : province)}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-zinc-50 transition-colors text-left"
+                >
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${isRemote ? "bg-rose-400" : "bg-brand-400"}`} />
+                  <span className="flex-1 text-sm font-semibold text-zinc-800">{province}</span>
+                  <span className="text-xs text-zinc-400 mr-2">{cities.length} cities</span>
+                  {isRemote && (
+                    <span className="text-[9px] font-bold bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded mr-2">REMOTE</span>
+                  )}
+                  {!search && (isOpen
+                    ? <ChevronDown size={14} className="text-zinc-400 shrink-0" />
+                    : <ChevronRight size={14} className="text-zinc-400 shrink-0" />
+                  )}
+                </button>
+
+                {/* Cities table */}
+                {isOpen && (
+                  <div className="bg-zinc-50/50 border-t border-zinc-100">
+                    {/* Header row */}
+                    <div className="grid grid-cols-4 gap-2 px-5 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-100">
+                      <span className="col-span-1">City</span>
+                      <span>Tier</span>
+                      <span className="text-right">Standard</span>
+                      <span className="text-right">Express</span>
+                    </div>
+                    {cities.map((city) => {
+                      const tier = getTier(city, province);
+                      return (
+                        <div
+                          key={city}
+                          className="grid grid-cols-4 gap-2 px-5 py-2.5 text-sm border-b border-zinc-100/70 last:border-0 hover:bg-white transition-colors"
+                        >
+                          <span className="col-span-1 font-medium text-zinc-700 truncate">{city}</span>
+                          <span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tier.badge}`}>
+                              {tier.id === "major" ? "Major" : tier.id === "remote" ? "Remote" : "Standard"}
+                            </span>
+                          </span>
+                          <span className="text-right font-semibold text-zinc-800">
+                            {formatCurrency(tier.standard)}
+                          </span>
+                          <span className="text-right font-semibold text-zinc-800">
+                            {formatCurrency(tier.express)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

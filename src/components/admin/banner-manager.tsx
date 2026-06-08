@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Eye, EyeOff, Pencil, X, ExternalLink, Image } from "lucide-react";
-import { createBanner, updateBanner, toggleBannerActive, deleteBanner } from "@/lib/admin/banner-actions";
+import { Plus, Trash2, Eye, EyeOff, Pencil, X, ExternalLink, Image, Upload, Link2 } from "lucide-react";
+import { createBanner, updateBanner, toggleBannerActive, deleteBanner, uploadBannerImage } from "@/lib/admin/banner-actions";
 
 type Banner = {
   id: string;
@@ -42,6 +42,9 @@ export function BannerManager({ initialBanners }: { initialBanners: Banner[] }) 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imgTab, setImgTab] = useState<"url" | "upload">("upload");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
   const displayed = filter === "all" ? banners : banners.filter((b) => b.placement === filter);
@@ -77,6 +80,28 @@ export function BannerManager({ initialBanners }: { initialBanners: Banner[] }) 
     setEditingId(null);
     setForm(EMPTY_FORM);
     setPreview(null);
+    setImgTab("upload");
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadBannerImage(fd);
+      if (res.success) {
+        setField("imageUrl", res.url);
+        setPreview(res.url);
+        toast.success("Image uploaded.");
+      } else {
+        toast.error(res.error);
+      }
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   function run(fn: () => Promise<{ success: boolean; message?: string; error?: string }>) {
@@ -169,12 +194,46 @@ export function BannerManager({ initialBanners }: { initialBanners: Banner[] }) 
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-zinc-700 mb-1.5">Image URL *</label>
-              <input className={inputCls} value={form.imageUrl} onChange={(e) => setField("imageUrl", e.target.value)} placeholder="https://example.com/banner.jpg" />
+              <label className="block text-xs font-medium text-zinc-700 mb-1.5">Banner Image *</label>
+
+              {/* Upload / URL tabs */}
+              <div className="flex rounded-lg border border-zinc-200 overflow-hidden mb-2 w-fit">
+                <button type="button" onClick={() => setImgTab("upload")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${imgTab === "upload" ? "bg-brand-500 text-white" : "bg-white text-zinc-600 hover:bg-zinc-50"}`}>
+                  <Upload className="h-3.5 w-3.5" /> Upload File
+                </button>
+                <button type="button" onClick={() => setImgTab("url")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${imgTab === "url" ? "bg-brand-500 text-white" : "bg-white text-zinc-600 hover:bg-zinc-50"}`}>
+                  <Link2 className="h-3.5 w-3.5" /> Paste URL
+                </button>
+              </div>
+
+              {imgTab === "upload" ? (
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-200 hover:border-brand-400 rounded-xl py-6 cursor-pointer transition-colors bg-zinc-50 hover:bg-brand-50/30"
+                >
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  {uploading ? (
+                    <p className="text-xs text-brand-500 font-medium animate-pulse">Uploading…</p>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-zinc-300" />
+                      <p className="text-xs text-zinc-500 font-medium">Click to choose a photo</p>
+                      <p className="text-[10px] text-zinc-400">JPG, PNG, WebP — max 5 MB</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <input className={inputCls} value={form.imageUrl} onChange={(e) => setField("imageUrl", e.target.value)} placeholder="https://example.com/banner.jpg" />
+              )}
+
               {preview && (
                 <div className="mt-2 rounded-lg overflow-hidden border border-zinc-200 h-32 relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={preview} alt="Preview" className="w-full h-full object-cover" onError={() => setPreview(null)} />
+                  <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors" />
+                  <span className="absolute bottom-1.5 right-2 text-[10px] text-white/80 bg-black/40 px-1.5 py-0.5 rounded font-medium">Preview</span>
                 </div>
               )}
             </div>

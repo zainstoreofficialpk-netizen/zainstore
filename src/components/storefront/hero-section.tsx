@@ -231,43 +231,28 @@ export function HeroSection({
                   />
                 )}
 
-                {/* Gradient overlays */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/20 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                {/* Content */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 px-8 pb-10 md:px-12 md:pb-12"
-                  style={{
-                    opacity: active ? 1 : 0,
-                    transform: active ? "translateY(0)" : "translateY(12px)",
-                    transition: `opacity ${TRANS_MS}ms, transform ${TRANS_MS}ms`,
-                    pointerEvents: active ? "auto" : "none",
-                  }}
-                >
-                  <div className="max-w-xl">
-                    <span className="inline-flex items-center gap-1.5 bg-brand-500 text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full mb-4 shadow-lg">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
-                      Special Offer
-                    </span>
-                    <h2 className="text-white font-black text-2xl sm:text-3xl md:text-[2.4rem] leading-[1.1] tracking-tight drop-shadow-2xl mb-3">
-                      {slide.title}
-                    </h2>
-                    <p className="text-white/75 text-sm md:text-base mb-6 max-w-sm leading-relaxed">
-                      Exclusive deals on top products — limited time only
-                    </p>
-                    {slide.linkUrl && (
-                      <Link
-                        href={slide.linkUrl}
-                        className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-black text-sm rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Shop Now
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    )}
+                {/* Shop Now button only */}
+                {slide.linkUrl && (
+                  <div
+                    className="absolute bottom-8 left-8 md:bottom-10 md:left-12"
+                    style={{
+                      opacity: active ? 1 : 0,
+                      transform: active ? "translateY(0)" : "translateY(10px)",
+                      transition: `opacity ${TRANS_MS}ms, transform ${TRANS_MS}ms`,
+                      pointerEvents: active ? "auto" : "none",
+                    }}
+                  >
+                    <Link
+                      href={slide.linkUrl}
+                      className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-black text-sm rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Shop Now
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}

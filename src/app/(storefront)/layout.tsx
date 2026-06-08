@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { StorefrontHeader } from "@/components/storefront/storefront-header";
+import { StorefrontProviders } from "@/components/storefront/storefront-providers";
 
 export const metadata = { title: { template: "%s | ZainStore.pk", default: "ZainStore.pk — Pakistan's Premier Marketplace" } };
 
@@ -10,7 +11,11 @@ export default async function StorefrontLayout({ children }: { children: React.R
     getServerSession(authOptions),
     db.category.findMany({
       where: { parentId: null },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        imageUrl: true,
         children: {
           select: { id: true, name: true, slug: true },
           take: 12,
@@ -45,6 +50,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
   }
 
   return (
+  <StorefrontProviders>
     <div className="min-h-screen bg-zinc-50 flex flex-col">
       <StorefrontHeader
         categories={categories}
@@ -82,5 +88,6 @@ export default async function StorefrontLayout({ children }: { children: React.R
         </div>
       </footer>
     </div>
+  </StorefrontProviders>
   );
 }

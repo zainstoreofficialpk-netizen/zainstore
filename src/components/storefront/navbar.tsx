@@ -21,22 +21,48 @@ interface Props {
   onMenuOpen: () => void;
 }
 
-function CurrencySelector() {
-  const [currency, setCurrency] = useState("PKR");
+function LanguageSelector() {
+  const [lang, setLang] = useState<"EN" | "UR">("EN");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const saved = localStorage.getItem("zs_currency");
-    if (saved) setCurrency(saved);
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
-  function toggle() {
-    const next = currency === "PKR" ? "USD" : "PKR";
-    setCurrency(next);
-    localStorage.setItem("zs_currency", next);
-  }
+
   return (
-    <button onClick={toggle}
-      className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
-      {currency === "PKR" ? "🇵🇰" : "🇺🇸"} {currency} <ChevronDown className="h-3 w-3" />
-    </button>
+    <div ref={ref} className="relative hidden lg:block">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+      >
+        <span className="text-sm">{lang === "EN" ? "🇬🇧" : "🇵🇰"}</span>
+        {lang === "EN" ? "EN" : "اردو"}
+        <ChevronDown className="h-3 w-3" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 mt-1 w-36 bg-white border border-zinc-200 rounded-xl shadow-lg overflow-hidden z-50">
+          {(["EN", "UR"] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => { setLang(l); setOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-zinc-50 transition-colors ${
+                lang === l ? "text-brand-600 font-semibold bg-brand-50/50" : "text-zinc-700"
+              }`}
+            >
+              <span>{l === "EN" ? "🇬🇧" : "🇵🇰"}</span>
+              <span>{l === "EN" ? "English" : "اردو"}</span>
+              {lang === l && <span className="ml-auto text-brand-500 text-xs">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -130,7 +156,6 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
 
           {/* Right cluster */}
           <div className="flex items-center gap-1 ml-auto md:ml-0">
-            <CurrencySelector />
 
             {/* Wishlist */}
             <Link href={user ? "/customer/wishlist" : "/login"}

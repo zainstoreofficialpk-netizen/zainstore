@@ -87,3 +87,17 @@ select {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Cart badge pop animation */
+@keyframes cart-pop {
+  0%   { transform: scale(0.4); opacity: 0.6; }
+  55%  { transform: scale(1.45); opacity: 1;   }
+  75%  { transform: scale(0.9);  }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+
+/* Buy Now button pulse */
+@keyframes buy-now-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(241, 103, 46, 0.3); }
+  50%       { box-shadow: 0 4px 32px rgba(241, 103, 46, 0.65); transform: scale(1.015); }
+}

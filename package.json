@@ -17,7 +17,11 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "setup": "npm install && docker compose up -d db && npm run db:push && npm run db:seed"
+    "setup": "npm install && docker compose up -d db && npm run db:push && npm run db:seed",
+    "migrate:wc": "tsx scripts/migrate-woocommerce.ts",
+    "migrate:wc:all": "tsx scripts/migrate-woocommerce.ts --all",
+    "migrate:vendors": "tsx scripts/migrate-vendors.ts",
+    "migrate:vendors:dry": "tsx scripts/migrate-vendors.ts --dry"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

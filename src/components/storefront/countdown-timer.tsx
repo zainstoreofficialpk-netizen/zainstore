@@ -23,17 +23,18 @@ function TimeBlock({ value, label }: { value: string; label: string }) {
 }
 
 export function CountdownTimer() {
-  const [secs, setSecs] = useState(secondsUntilMidnight);
+  const [secs, setSecs] = useState<number | null>(null);
 
   useEffect(() => {
+    setSecs(secondsUntilMidnight());
     const id = setInterval(() => setSecs(secondsUntilMidnight()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
+  const h = secs === null ? 0 : Math.floor(secs / 3600);
+  const m = secs === null ? 0 : Math.floor((secs % 3600) / 60);
+  const s = secs === null ? 0 : secs % 60;
 
   return (
     <div className="flex items-center gap-1">
