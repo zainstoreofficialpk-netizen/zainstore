@@ -13,23 +13,26 @@ export function AllProductsSection({
 }) {
   const [products, setProducts] = useState<ProductCardData[]>(initialProducts);
   const [page, setPage] = useState(1);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const [, startTransition] = useTransition();
 
   const hasMore = products.length < total;
 
-  function loadMore() {
-    startTransition(async () => {
+  async function loadMore() {
+    setIsPending(true);
+    try {
       const next = page + 1;
-      const res = await fetch(`/api/storefront/products?page=${next}&limit=40`);
+      const res = await fetch(`/api/storefront/products?page=${next}&limit=40`, { cache: "no-store" });
       if (!res.ok) return;
       const data: { products: ProductCardData[]; total: number } = await res.json();
       setProducts((prev) => {
-        // Deduplicate by id
         const ids = new Set(prev.map((p) => p.id));
         return [...prev, ...data.products.filter((p) => !ids.has(p.id))];
       });
       setPage(next);
-    });
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -47,7 +50,7 @@ export function AllProductsSection({
         </div>
 
         {/* Grid — 2 cols mobile → 5 desktop → 6 xl */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

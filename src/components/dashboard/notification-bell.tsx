@@ -31,8 +31,33 @@ export function NotificationBell({
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [prevCount, setPrevCount] = useState(0);
+  const prevCountRef = useRef(-1); // -1 = first load, skip sound
   const panelRef = useRef<HTMLDivElement>(null);
+
+  async function playChime() {
+    try {
+      const ctx = new AudioContext();
+      // Browser autoplay policy: must resume before scheduling audio
+      if (ctx.state === "suspended") await ctx.resume();
+
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+
+      const notes = [1046.5, 1318.5]; // C6 → E6
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        const t = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.15, t + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        osc.start(t);
+        osc.stop(t + 0.45);
+      });
+    } catch { /* AudioContext unavailable */ }
+  }
 
   async function fetchNotifications() {
     try {
@@ -41,26 +66,15 @@ export function NotificationBell({
       const data = await res.json();
       const newCount: number = data.count ?? 0;
 
-      if (newCount > prevCount && prevCount > 0) {
+      if (prevCountRef.current >= 0 && newCount > prevCountRef.current) {
         const newest: Notification | undefined = data.notifications?.[0];
         if (newest) {
           toast(newest.title, { description: newest.body, icon: "🔔" });
-          try {
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 880;
-            gain.gain.setValueAtTime(0.12, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.35);
-          } catch { /* AudioContext unavailable */ }
+          playChime();
         }
       }
 
-      setPrevCount(newCount);
+      prevCountRef.current = newCount;
       setCount(newCount);
       setNotifications(data.notifications ?? []);
     } catch { /* ignore */ }
@@ -70,6 +84,7 @@ export function NotificationBell({
     fetchNotifications();
     const id = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

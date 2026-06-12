@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import {
   Bell,
   Building2,
+  Camera,
   CreditCard,
   Image,
   Lock,
@@ -139,11 +140,31 @@ function SaveBtn({ pending }: { pending: boolean }) {
 export function VendorSettingsShell({ user, vendor, store }: Props) {
   const [activeTab, setActiveTab] = useState<string>("profile");
   const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone ?? "");
   const [image, setImage] = useState(user.image ?? "");
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Please select a JPG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImage(ev.target?.result as string);
+      toast.success("Photo selected — click Save Changes to apply.");
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Store
   const [storeDesc, setStoreDesc] = useState(store.description ?? "");
@@ -241,24 +262,37 @@ export function VendorSettingsShell({ user, vendor, store }: Props) {
           {activeTab === "profile" && (
             <Section title="Profile Information" description="Update your personal details and avatar.">
               <div className="space-y-4">
-                {user.image && (
-                  <div className="flex items-center gap-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={user.image} alt="Avatar" className="h-14 w-14 rounded-full object-cover border border-zinc-200" />
-                    <div>
-                      <p className="text-sm font-medium text-zinc-800">{user.name}</p>
-                      <p className="text-xs text-zinc-500">{user.email}</p>
-                    </div>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    {image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={image} alt="Avatar" className="h-16 w-16 rounded-full object-cover border-2 border-zinc-200" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-brand-50 border-2 border-zinc-200 flex items-center justify-center text-xl font-bold text-brand-500">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-brand-500 hover:bg-brand-600 flex items-center justify-center shadow-sm transition-colors"
+                      title="Change photo"
+                    >
+                      <Camera className="w-3 h-3 text-white" />
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoSelect} />
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm font-medium text-zinc-800">{name}</p>
+                    <p className="text-xs text-zinc-500">{user.email}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">JPG, PNG or WEBP · max 2MB</p>
+                  </div>
+                </div>
                 <Field label="Full Name *">
                   <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
                 </Field>
                 <Field label="Phone Number">
                   <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 1234567" />
-                </Field>
-                <Field label="Profile Picture URL">
-                  <input className={inputCls} value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://…" />
                 </Field>
                 <div className="pt-1">
                   <p className="text-xs text-zinc-500 mb-1">Store</p>
