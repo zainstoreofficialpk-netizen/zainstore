@@ -2,7 +2,11 @@ import { Resend } from "resend";
 
 // ── Client ────────────────────────────────────────────────────────────────────
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: import("resend").Resend | null = null;
+function getResend() {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY ?? "");
+  return resend;
+}
 
 // ── Core send function ────────────────────────────────────────────────────────
 
@@ -16,7 +20,7 @@ export async function sendEmail({ to, subject, html }: EmailPayload) {
   }
   try {
     const from = process.env.EMAIL_FROM ?? "ZainStore.pk <onboarding@resend.dev>";
-    const { error } = await resend.emails.send({ from, to, subject, html });
+    const { error } = await getResend().emails.send({ from, to, subject, html });
     if (error) console.error("❌ Email send failed:", error);
   } catch (err) {
     console.error("❌ Email send failed:", err);
