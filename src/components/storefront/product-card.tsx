@@ -18,6 +18,8 @@ export type ProductCardData = {
   imageUrl: string | null;
   storeName: string | null;
   storeSlug: string | null;
+  storeId: string | null;
+  vendorId: string | null;
   rating: number;
   reviewCount: number;
 };
@@ -75,6 +77,9 @@ export function ProductCard({
       salePrice: product.salePrice,
       imageUrl: product.imageUrl,
       storeName: product.storeName,
+      storeId: product.storeId,
+      vendorId: product.vendorId,
+      weightGrams: 500,
     });
 
     // Trigger fly animation from the image container
@@ -126,14 +131,14 @@ export function ProductCard({
           <Heart className="h-3.5 w-3.5" />
         </button>
 
-        {/* Add to Cart — slides up from the bottom on hover */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out z-10">
+        {/* Add to Cart — always visible on mobile, slides up on desktop hover */}
+        <div className="absolute bottom-0 left-0 right-0 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-200 ease-out z-10">
           <button
             onClick={handleAddToCart}
-            className={`w-full py-2.5 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wide transition-colors duration-150 ${
+            className={`w-full py-2 sm:py-2.5 flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wide transition-colors duration-150 ${
               added
                 ? "bg-green-500 text-white"
-                : "bg-zinc-900/88 hover:bg-brand-500 text-white backdrop-blur-sm"
+                : "bg-zinc-900/80 hover:bg-brand-500 text-white backdrop-blur-sm"
             }`}
           >
             {added ? (
@@ -152,34 +157,33 @@ export function ProductCard({
       </div>
 
       {/* ── Info ──────────────────────────────────────── */}
-      <div className={compact ? "p-3" : "p-3.5"}>
-        {product.storeName && (
+      <div className={compact ? "p-2 sm:p-3" : "p-3 sm:p-3.5"}>
+        {product.storeName && !compact && (
           <p className="text-[10px] text-zinc-400 font-medium mb-0.5 truncate">
             {product.storeName}
           </p>
         )}
-        <p className="text-[13px] font-semibold text-zinc-800 leading-snug line-clamp-2 mb-1.5">
+        <p className={`font-semibold text-zinc-800 leading-snug line-clamp-2 mb-1 ${compact ? "text-[11px] sm:text-[12px]" : "text-[12px] sm:text-[13px]"}`}>
           {product.name}
         </p>
 
-        <div className="flex items-center gap-1.5 mb-2">
-          <Stars rating={product.rating} />
-          {product.reviewCount > 0 && (
-            <span className="text-[10px] text-zinc-400">({product.reviewCount})</span>
-          )}
-        </div>
+        {!compact && (
+          <div className="flex items-center gap-1 mb-1.5">
+            <Stars rating={product.rating} />
+            {product.reviewCount > 0 && (
+              <span className="text-[10px] text-zinc-400">({product.reviewCount})</span>
+            )}
+          </div>
+        )}
 
         {/* Price row + quick-add button */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span
-              className="font-black text-zinc-900 shrink-0"
-              style={{ fontSize: compact ? "0.85rem" : "0.95rem" }}
-            >
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex flex-col min-w-0">
+            <span className={`font-black text-zinc-900 leading-tight ${compact ? "text-[12px] sm:text-[13px]" : "text-[13px] sm:text-[15px]"}`}>
               {formatCurrency(displayPrice)}
             </span>
             {product.salePrice && (
-              <span className="text-[11px] text-zinc-400 line-through truncate">
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 line-through truncate">
                 {formatCurrency(product.price)}
               </span>
             )}
@@ -189,16 +193,18 @@ export function ProductCard({
           <button
             onClick={handleAddToCart}
             aria-label="Add to cart"
-            className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ${
+            className={`shrink-0 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm active:scale-95 ${
+              compact ? "h-7 w-7" : "h-8 w-8"
+            } ${
               added
                 ? "bg-green-500 text-white scale-110"
-                : "bg-brand-50 hover:bg-brand-500 text-brand-500 hover:text-white hover:scale-110 active:scale-95"
+                : "bg-brand-50 hover:bg-brand-500 text-brand-500 hover:text-white hover:scale-110"
             }`}
           >
             {added ? (
-              <Check className="h-3.5 w-3.5" />
+              <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             ) : (
-              <ShoppingCart className="h-3.5 w-3.5" />
+              <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             )}
           </button>
         </div>

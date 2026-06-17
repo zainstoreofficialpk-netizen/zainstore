@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { revalidatePath } from "next/cache";
+import { sendEmail, orderConfirmationEmailHtml, vendorNewOrderEmailHtml } from "@/lib/email";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -47,18 +48,33 @@ export type PlaceOrderResult =
 
 // ─── Validate coupon ──────────────────────────────────────────
 
+type CartLineItem = { vendorId: string | null; price: number; salePrice: number | null; quantity: number };
+
 export type CouponResult =
-  | { valid: true; type: string; value: number; code: string; description: string }
+  | {
+      valid: true;
+      type: string;
+      value: number;
+      code: string;
+      description: string;
+      scope: "platform" | "vendor";
+      vendorId: string | null;
+      storeName: string | null;
+      eligibleSubtotal: number;
+      discountAmount: number;
+    }
   | { valid: false; error: string };
 
 export async function validateCoupon(
   code: string,
-  subtotal: number
+  subtotal: number,
+  items: CartLineItem[] = [],
 ): Promise<CouponResult> {
   if (!code.trim()) return { valid: false, error: "Enter a coupon code" };
 
   const coupon = await db.coupon.findUnique({
     where: { code: code.toUpperCase().trim() },
+    include: { vendor: { include: { store: { select: { name: true } } } } },
   });
 
   if (!coupon || !coupon.active) {
@@ -66,27 +82,57 @@ export async function validateCoupon(
   }
 
   const now = new Date();
-  if (coupon.startsAt && coupon.startsAt > now) {
+  if (coupon.startsAt && coupon.startsAt > now)
     return { valid: false, error: "This coupon is not active yet" };
-  }
-  if (coupon.expiresAt && coupon.expiresAt < now) {
+  if (coupon.expiresAt && coupon.expiresAt < now)
     return { valid: false, error: "This coupon has expired" };
-  }
-  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit)
     return { valid: false, error: "This coupon has reached its usage limit" };
+
+  // ── Determine scope and eligible subtotal ─────────────────────
+  const scope: "platform" | "vendor" = coupon.vendorId ? "vendor" : "platform";
+  const storeName = coupon.vendor?.store?.name ?? null;
+
+  let eligibleSubtotal = subtotal;
+
+  if (scope === "vendor" && items.length > 0) {
+    // Only sum items from this vendor
+    eligibleSubtotal = items
+      .filter((i) => i.vendorId === coupon.vendorId)
+      .reduce((sum, i) => sum + (i.salePrice ?? i.price) * i.quantity, 0);
+
+    if (eligibleSubtotal === 0) {
+      return {
+        valid: false,
+        error: storeName
+          ? `This coupon only applies to products from "${storeName}". None of those products are in your cart.`
+          : "This coupon only applies to a specific vendor's products, which aren't in your cart.",
+      };
+    }
   }
-  if (coupon.minOrderAmount && subtotal < Number(coupon.minOrderAmount)) {
+
+  if (coupon.minOrderAmount && eligibleSubtotal < Number(coupon.minOrderAmount)) {
+    const scope_label = scope === "vendor" && storeName ? ` on ${storeName} products` : "";
     return {
       valid: false,
-      error: `Minimum order of PKR ${Number(coupon.minOrderAmount).toLocaleString()} required`,
+      error: `Minimum order of PKR ${Number(coupon.minOrderAmount).toLocaleString()}${scope_label} required`,
     };
   }
 
+  // ── Compute discount on eligible subtotal only ────────────────
   const value = Number(coupon.value);
+  let discountAmount = 0;
   let description = "";
-  if (coupon.type === "PERCENTAGE") description = `${value}% off`;
-  else if (coupon.type === "FIXED") description = `PKR ${value.toLocaleString()} off`;
-  else if (coupon.type === "FREE_SHIPPING") description = "Free shipping";
+
+  if (coupon.type === "PERCENTAGE") {
+    discountAmount = Math.round((eligibleSubtotal * value) / 100);
+    description = `${value}% off${scope === "vendor" && storeName ? ` on ${storeName}` : ""}`;
+  } else if (coupon.type === "FIXED") {
+    discountAmount = Math.min(value, eligibleSubtotal);
+    description = `PKR ${value.toLocaleString()} off${scope === "vendor" && storeName ? ` on ${storeName}` : ""}`;
+  } else if (coupon.type === "FREE_SHIPPING") {
+    description = "Free shipping";
+  }
 
   return {
     valid: true,
@@ -94,6 +140,11 @@ export async function validateCoupon(
     value,
     code: coupon.code,
     description,
+    scope,
+    vendorId: coupon.vendorId,
+    storeName,
+    eligibleSubtotal,
+    discountAmount,
   };
 }
 
@@ -140,8 +191,27 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const productIds = input.items.map((i) => i.productId);
     const products = await db.product.findMany({
       where: { id: { in: productIds }, status: "ACTIVE" },
-      select: { id: true, vendorId: true, stock: true, trackInventory: true },
+      select: {
+        id: true, vendorId: true, stock: true, trackInventory: true,
+        category: { select: { commissionType: true, commissionValue: true } },
+      },
     });
+
+    // Fetch global commission rate
+    const globalRateSetting = await db.settings.findUnique({ where: { key: "commission.global_rate" } });
+    const globalRate = typeof (globalRateSetting?.value as any)?.rate === "number"
+      ? (globalRateSetting!.value as any).rate
+      : 10;
+
+    // Fetch vendor commission overrides for all vendors in this order
+    const vendorIds = [...new Set(products.map((p) => p.vendorId).filter(Boolean))] as string[];
+    const vendorOverrides = vendorIds.length
+      ? await db.vendorProfile.findMany({
+          where: { id: { in: vendorIds } },
+          select: { id: true, commissionType: true, commissionValue: true },
+        })
+      : [];
+    const vendorOverrideMap = new Map(vendorOverrides.map((v) => [v.id, v]));
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -204,6 +274,20 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         items: {
           create: input.items.map((item) => {
             const p = productMap.get(item.productId)!;
+            const lineTotal = item.unitPrice * item.quantity;
+
+            // Commission priority: vendor override → category rate → global rate
+            let effectiveRate = globalRate;
+            if (p.vendorId) {
+              const vOverride = vendorOverrideMap.get(p.vendorId);
+              if (vOverride?.commissionType === "PERCENTAGE_OF_SALE" && vOverride.commissionValue != null) {
+                effectiveRate = Number(vOverride.commissionValue);
+              } else if (p.category?.commissionType === "PERCENTAGE_OF_SALE" && p.category.commissionValue != null) {
+                effectiveRate = Number(p.category.commissionValue);
+              }
+            }
+            const commissionTotal = Math.round((lineTotal * effectiveRate) / 100);
+
             return {
               productId: item.productId,
               vendorId: p.vendorId,
@@ -214,8 +298,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
               discountTotal: 0,
               taxTotal: 0,
               shippingTotal: 0,
-              lineTotal: item.unitPrice * item.quantity,
-              commissionTotal: 0,
+              lineTotal,
+              commissionTotal,
             };
           }),
         },
@@ -260,6 +344,85 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
 
     revalidatePath("/customer/orders");
+
+    // ── Send emails (fire-and-forget, never block order creation) ────────────
+    void (async () => {
+      try {
+        const customer = await db.user.findUnique({
+          where: { id: customerId },
+          select: { email: true, name: true },
+        });
+
+        const shippingLine = [input.streetAddress, input.area, input.city, input.province]
+          .filter(Boolean)
+          .join(", ");
+
+        const emailItems = input.items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        }));
+
+        if (customer?.email) {
+          await sendEmail({
+            to: customer.email,
+            subject: `Order Confirmed: ${orderNumber} — ZainStore.pk`,
+            html: orderConfirmationEmailHtml({
+              customerName: customer.name ?? input.fullName,
+              orderNumber,
+              items: emailItems,
+              subtotal: input.subtotal,
+              shippingTotal: input.shippingTotal,
+              discountTotal: input.discountTotal,
+              grandTotal: input.grandTotal,
+              paymentMethod: input.paymentMethod,
+              shippingAddress: shippingLine,
+            }),
+          });
+        }
+
+        // Notify each unique vendor with their items only
+        const vendorItemMap = new Map<string, { userId: string; name: string; storeName: string; items: typeof emailItems }>();
+        for (const item of input.items) {
+          const p = productMap.get(item.productId);
+          if (!p?.vendorId) continue;
+          if (!vendorItemMap.has(p.vendorId)) {
+            const vendorInfo = await db.vendorProfile.findUnique({
+              where: { id: p.vendorId },
+              select: { userId: true, user: { select: { name: true, email: true } }, store: { select: { name: true } } },
+            });
+            if (!vendorInfo) continue;
+            vendorItemMap.set(p.vendorId, {
+              userId: vendorInfo.userId,
+              name: vendorInfo.user.name ?? "Vendor",
+              storeName: vendorInfo.store?.name ?? "Your Store",
+              items: [],
+            });
+          }
+          vendorItemMap.get(p.vendorId)!.items.push({ name: item.name, quantity: item.quantity, unitPrice: item.unitPrice });
+        }
+
+        for (const [vendorId, v] of vendorItemMap) {
+          const vendorUser = await db.user.findUnique({ where: { id: v.userId }, select: { email: true } });
+          if (!vendorUser?.email) continue;
+          const vendorTotal = v.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+          await sendEmail({
+            to: vendorUser.email,
+            subject: `New Order: ${orderNumber} — ZainStore.pk`,
+            html: vendorNewOrderEmailHtml({
+              vendorName: v.name,
+              storeName: v.storeName,
+              orderNumber,
+              customerName: input.fullName,
+              items: v.items,
+              vendorTotal,
+            }),
+          });
+        }
+      } catch (emailErr) {
+        console.error("Order email error:", emailErr);
+      }
+    })();
 
     return { success: true, orderNumber, orderId: order.id };
   } catch (err) {

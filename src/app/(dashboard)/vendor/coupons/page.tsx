@@ -20,5 +20,5 @@ export default async function VendorCouponsPage() {
     getVendorCouponStats(vendorId),
   ]);
 
-  return <CouponTable coupons={coupons} stats={stats} />;
+  return <CouponTable coupons={coupons} stats={stats} storeName={vendorStore.store?.name ?? "Your Store"} />;
 }

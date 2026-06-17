@@ -53,9 +53,8 @@ function LoginForm() {
 
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
-            <Store size={24} aria-hidden />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-16 w-16 object-contain" />
           <div>
             <h1 className="text-2xl font-bold text-zinc-950">ZainStore.pk</h1>
             <p className="mt-1 text-sm text-zinc-500">Sign in to your dashboard</p>
@@ -130,24 +129,17 @@ function LoginForm() {
         </div>
 
         {/* Register links */}
-        <div className="mt-6 space-y-2 text-center text-sm text-zinc-500">
-          <p>
+        <div className="mt-6 space-y-2 text-center text-sm">
+          <Link href="/register/customer" className="block text-zinc-500 hover:text-brand-600 transition-colors">
             New customer?{" "}
-            <Link href="/register/customer" className="font-medium text-brand-600 hover:underline">
-              Create account
-            </Link>
-          </p>
-          <p>
+            <span className="font-semibold text-brand-600 underline underline-offset-2">Create account</span>
+          </Link>
+          <Link href="/register/vendor" className="block text-zinc-500 hover:text-brand-600 transition-colors">
             Want to sell?{" "}
-            <Link href="/register/vendor" className="font-medium text-brand-600 hover:underline">
-              Apply as a vendor
-            </Link>
-          </p>
+            <span className="font-semibold text-brand-600 underline underline-offset-2">Apply as a vendor</span>
+          </Link>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-400">
-          Demo — admin@zainstore.local / zainstore123
-        </p>
       </div>
     </div>
   );

@@ -1,11 +1,10 @@
-import { writeFile, mkdir } from "fs/promises";
-import { join, extname } from "path";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;   // 10 MB
-const MAX_VIDEO_BYTES = 30 * 1024 * 1024;   // 30 MB
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
 
 const ALLOWED_IMAGE = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const ALLOWED_VIDEO = new Set(["video/mp4", "video/webm"]);
@@ -51,16 +50,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unknown upload type." }, { status: 400 });
   }
 
-  // Build a unique filename: {timestamp}-{random}.{ext}
-  const ext = extname(file.name).toLowerCase() || (type === "video" ? ".mp4" : ".jpg");
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-  const uploadDir = join(process.cwd(), "public", "uploads", "products");
-
-  await mkdir(uploadDir, { recursive: true });
-
-  const bytes = await file.arrayBuffer();
-  await writeFile(join(uploadDir, filename), Buffer.from(bytes));
-
-  const url = `/uploads/products/${filename}`;
-  return NextResponse.json({ url });
+  try {
+    const url = await uploadToCloudinary(file, "products");
+    return NextResponse.json({ url });
+  } catch {
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
+  }
 }

@@ -235,7 +235,7 @@ export function HeroSection({
                 {/* Shop Now button only */}
                 {slide.linkUrl && (
                   <div
-                    className="absolute bottom-8 left-8 md:bottom-10 md:left-12"
+                    className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 md:bottom-10 md:left-12"
                     style={{
                       opacity: active ? 1 : 0,
                       transform: active ? "translateY(0)" : "translateY(10px)",
@@ -245,11 +245,11 @@ export function HeroSection({
                   >
                     <Link
                       href={slide.linkUrl}
-                      className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-black text-sm rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:px-6 sm:py-2.5 sm:text-sm md:px-8 md:py-3.5 md:gap-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Shop Now
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
                     </Link>
                   </div>
                 )}
@@ -310,7 +310,7 @@ export function HeroSection({
 
   return (
     <section
-      className="bg-zinc-50 py-3"
+      className="bg-zinc-50 py-3 w-full overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -360,8 +360,8 @@ export function HeroSection({
 
         {/* ── Mobile / Tablet: full-width slider ───────── */}
         <div
-          className="relative overflow-hidden rounded-2xl cursor-grab active:cursor-grabbing lg:hidden"
-          style={{ aspectRatio: "16/6" }}
+          className="relative overflow-hidden rounded-xl sm:rounded-2xl cursor-grab active:cursor-grabbing lg:hidden"
+          style={{ aspectRatio: "16/9" }}
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -373,11 +373,9 @@ export function HeroSection({
         {/* ── Thumbnail strip — offset by sidebar on desktop so it sits under the slider ── */}
         {n > 1 && (
           <div
-            className="flex items-center gap-2.5 mt-3"
-            style={{
-              paddingLeft: categories.length > 0 ? "232px" : undefined, // 220px sidebar + 12px gap
-              justifyContent: categories.length > 0 ? "flex-start" : "center",
-            }}
+            className={`hidden sm:flex items-center gap-2.5 mt-3 overflow-x-auto scrollbar-hide ${
+              categories.length > 0 ? "lg:pl-[232px]" : "justify-center"
+            }`}
           >
             {slides.map((slide, i) => {
               const active = i === real;
@@ -386,12 +384,12 @@ export function HeroSection({
                   key={slide.id}
                   onClick={() => jumpTo(i)}
                   aria-label={`Slide ${i + 1}`}
-                  className={`relative shrink-0 overflow-hidden rounded-lg transition-all duration-300 ${
+                  className={`relative shrink-0 overflow-hidden rounded-md sm:rounded-lg transition-all duration-300 ${
                     active
-                      ? "ring-2 ring-brand-500 ring-offset-2 ring-offset-zinc-50 scale-110 opacity-100"
+                      ? "ring-2 ring-brand-500 ring-offset-1 sm:ring-offset-2 ring-offset-zinc-50 scale-110 opacity-100"
                       : "opacity-45 hover:opacity-75 hover:scale-105"
                   }`}
-                  style={{ width: 68, height: 42 }}
+                  style={{ width: 52, height: 32 }}
                 >
                   {slide.imageUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -500,11 +498,11 @@ function CategoryRow({ cat }: { cat: HeroCategory }) {
 
 function EmptyHero({ hasSidebar }: { hasSidebar: boolean }) {
   return (
-    <section className="bg-zinc-50 py-3">
+    <section className="bg-zinc-50 py-3 w-full overflow-hidden">
       <div className="container mx-auto px-4 max-w-7xl">
         <div
-          className="rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center"
-          style={{ height: "440px", marginLeft: hasSidebar ? "252px" : undefined }}
+          className={`rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center ${hasSidebar ? "lg:ml-[252px]" : ""}`}
+          style={{ height: "440px" }}
         >
           <div className="text-center text-white px-6">
             <Zap className="h-10 w-10 mx-auto mb-3 opacity-40" />

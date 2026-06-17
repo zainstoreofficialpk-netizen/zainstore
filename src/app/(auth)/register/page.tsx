@@ -8,9 +8,8 @@ export default function RegisterPage() {
 
         <div className="mb-10 text-center">
           <div className="mb-4 flex justify-center">
-            <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
-              <Store size={24} aria-hidden />
-            </span>
+            {/* eslint-disable-next-line /next/no-img-element */}
+          <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-14 w-14 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-zinc-950">Join ZainStore.pk</h1>
           <p className="mt-2 text-sm text-zinc-500">Choose how you want to use the platform</p>

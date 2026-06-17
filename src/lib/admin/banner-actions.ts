@@ -4,9 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { randomBytes } from "crypto";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -26,12 +24,12 @@ export async function uploadBannerImage(formData: FormData): Promise<{ success: 
   const allowed = ["jpg", "jpeg", "png", "webp", "gif"];
   if (!allowed.includes(ext)) return { success: false, error: "Only JPG, PNG, WebP or GIF allowed." };
 
-  const name = `banner-${randomBytes(8).toString("hex")}.${ext}`;
-  const dir = join(process.cwd(), "public", "banners");
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, name), Buffer.from(await file.arrayBuffer()));
-
-  return { success: true, url: `/banners/${name}` };
+  try {
+    const url = await uploadToCloudinary(file, "banners");
+    return { success: true, url };
+  } catch {
+    return { success: false, error: "Upload failed. Please try again." };
+  }
 }
 
 export async function createBanner(data: {

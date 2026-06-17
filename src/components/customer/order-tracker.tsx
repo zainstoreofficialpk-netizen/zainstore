@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { Check, Package, Truck, MapPin, Clock, XCircle, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ type Step = {
   key: OrderStatusKey;
   label: string;
   description: string;
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  Icon: LucideIcon;
 };
 
 const STEPS: Step[] = [

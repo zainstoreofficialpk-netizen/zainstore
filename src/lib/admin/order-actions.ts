@@ -6,13 +6,15 @@ import { OrderStatus, PaymentStatus, NotificationType } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { sendEmail, orderStatusEmailHtml } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
 // Full status progression — forward-only transitions only
 const VALID_TRANSITIONS: Record<string, OrderStatus[]> = {
   PENDING:            [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-  PROCESSING:         [OrderStatus.READY_FOR_DISPATCH, OrderStatus.CANCELLED],
+  PROCESSING:         [OrderStatus.READY_FOR_DISPATCH, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
   READY_FOR_DISPATCH: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
   SHIPPED:            [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
   OUT_FOR_DELIVERY:   [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
@@ -51,13 +53,12 @@ async function requireAdmin() {
 async function notifyCustomer(customerId: string, orderNumber: string, status: string) {
   const msg = STATUS_MESSAGES[status];
   if (!msg) return;
-  await db.notification.create({
-    data: {
-      userId: customerId,
-      type: NotificationType.ORDER,
-      title: `Order ${orderNumber} — ${STATUS_LABELS[status] ?? status}`,
-      body: msg,
-    },
+  await createNotification({
+    userId: customerId,
+    type: NotificationType.ORDER,
+    title: `Order ${orderNumber} — ${STATUS_LABELS[status] ?? status}`,
+    body: msg,
+    url: "/customer/orders",
   });
 }
 
@@ -69,9 +70,7 @@ async function notifyOrderVendors(orderId: string, title: string, body: string) 
   });
   await Promise.all(
     vendors.map((item) =>
-      db.notification.create({
-        data: { userId: item.vendor.userId, type: NotificationType.ORDER, title, body },
-      }),
+      createNotification({ userId: item.vendor.userId, type: NotificationType.ORDER, title, body, url: "/vendor/orders" }),
     ),
   );
 }
@@ -121,6 +120,33 @@ export async function updateOrderStatus(
 
     // Notify customer on every status change
     await notifyCustomer(order.customerId, order.orderNumber, newStatus);
+
+    // Email customer for key status transitions
+    if (["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"].includes(newStatus)) {
+      void (async () => {
+        try {
+          const customer = await db.user.findUnique({
+            where: { id: order.customerId },
+            select: { email: true, name: true },
+          });
+          if (customer?.email) {
+            await sendEmail({
+              to: customer.email,
+              subject: `Order ${order.orderNumber} — ${STATUS_LABELS[newStatus] ?? newStatus}`,
+              html: orderStatusEmailHtml({
+                customerName: customer.name ?? "Customer",
+                orderNumber: order.orderNumber,
+                status: newStatus,
+                trackingNumber: extra?.trackingNumber ?? null,
+                estimatedDelivery: extra?.estimatedDelivery ?? null,
+              }),
+            });
+          }
+        } catch (emailErr) {
+          console.error("Order status email error:", emailErr);
+        }
+      })();
+    }
 
     // Notify vendors
     await notifyOrderVendors(

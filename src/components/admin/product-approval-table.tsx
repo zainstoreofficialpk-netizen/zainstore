@@ -176,7 +176,7 @@ export function ProductApprovalTable({
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  const currentStatus = searchParams.get("status") ?? "PENDING_REVIEW";
+  const currentStatus = searchParams.get("status") ?? "ALL";
   const currentSearch = searchParams.get("search") ?? "";
   const currentPage = Number(searchParams.get("page") ?? "1");
 

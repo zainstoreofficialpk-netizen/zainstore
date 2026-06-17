@@ -8,6 +8,8 @@ import { WithdrawalStatus, PayoutMethod, NotificationType } from "@prisma/client
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { calcVendorBalance } from "@/lib/admin/withdrawal-data";
+import { sendEmail, withdrawalPaidEmailHtml } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -31,13 +33,12 @@ async function notifyVendor(vendorId: string, title: string, body: string) {
     select: { userId: true },
   });
   if (!vendor) return;
-  await db.notification.create({
-    data: {
-      userId: vendor.userId,
-      type: NotificationType.WITHDRAWAL,
-      title,
-      body,
-    },
+  await createNotification({
+    userId: vendor.userId,
+    type: NotificationType.WITHDRAWAL,
+    title,
+    body,
+    url: "/vendor/withdrawals",
   });
 }
 
@@ -182,6 +183,30 @@ export async function markWithdrawalPaid(withdrawalId: string, formData: FormDat
       "Payout Sent ✓",
       `Your payout of PKR ${Number(w.amount).toLocaleString()} has been transferred. Reference: ${parsed.data.reference}`,
     );
+
+    // Email the vendor
+    void (async () => {
+      try {
+        const vendor = await db.vendorProfile.findUnique({
+          where: { id: w.vendorId },
+          select: { user: { select: { name: true, email: true } } },
+        });
+        if (vendor?.user?.email) {
+          await sendEmail({
+            to: vendor.user.email,
+            subject: `Payout of PKR ${Number(w.amount).toLocaleString()} Sent — ZainStore.pk`,
+            html: withdrawalPaidEmailHtml({
+              vendorName: vendor.user.name ?? "Vendor",
+              amount: Number(w.amount),
+              method: w.method,
+              reference: parsed.data.reference,
+            }),
+          });
+        }
+      } catch (emailErr) {
+        console.error("Withdrawal paid email error:", emailErr);
+      }
+    })();
 
     revalidatePath("/admin/withdrawals");
     revalidatePath("/admin");

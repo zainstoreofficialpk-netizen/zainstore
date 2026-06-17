@@ -36,7 +36,10 @@ export type ProductInfoData = {
   rating: number;
   reviewCount: number;
   storeName: string | null;
+  storeId: string | null;
+  vendorId: string | null;
   imageUrl: string | null;
+  weight: number | null;
 };
 
 export function ProductInfo({
@@ -79,6 +82,9 @@ export function ProductInfo({
         salePrice: product.salePrice,
         imageUrl: product.imageUrl,
         storeName: product.storeName,
+        storeId: product.storeId,
+        vendorId: product.vendorId,
+        weightGrams: product.weight ? Math.round(Number(product.weight)) : 500,
       });
     }
 

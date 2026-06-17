@@ -17,6 +17,8 @@ export function MobileStickyBar({
     salePrice: number | null;
     imageUrl: string | null;
     storeName: string | null;
+    storeId: string | null;
+    vendorId: string | null;
     inStock: boolean;
   };
 }) {
@@ -49,6 +51,9 @@ export function MobileStickyBar({
       salePrice: product.salePrice,
       imageUrl: product.imageUrl,
       storeName: product.storeName,
+      storeId: product.storeId,
+      vendorId: product.vendorId,
+      weightGrams: 500,
     });
     if (buyBtnRef.current) {
       flyCtx?.triggerFly(buyBtnRef.current.getBoundingClientRect(), product.imageUrl ?? "");

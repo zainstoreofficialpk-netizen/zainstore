@@ -8,6 +8,7 @@ import { ReviewStatus, OrderStatus, PaymentStatus, NotificationType } from "@pri
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { upsertVendorTrustScore } from "@/lib/trust-score";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult<T = void> =
   | { success: true; message: string; data?: T }
@@ -114,13 +115,12 @@ export async function submitReviewAction(data: z.infer<typeof submitSchema>): Pr
         select: { userId: true },
       });
       if (vendor) {
-        await db.notification.create({
-          data: {
-            userId: vendor.userId,
-            type: NotificationType.REVIEW,
-            title: `New ${rating}★ review on "${orderItem.product.name}"`,
-            body: comment ? `"${comment.slice(0, 100)}${comment.length > 100 ? "…" : ""}"` : "A customer left a star rating.",
-          },
+        await createNotification({
+          userId: vendor.userId,
+          type: NotificationType.REVIEW,
+          title: `New ${rating}★ review on "${orderItem.product.name}"`,
+          body: comment ? `"${comment.slice(0, 100)}${comment.length > 100 ? "…" : ""}"` : "A customer left a star rating.",
+          url: "/vendor/reviews",
         });
       }
 

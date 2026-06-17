@@ -9,7 +9,6 @@ import {
   FolderTree,
   Home,
   Image,
-  LifeBuoy,
   MessageSquare,
   PackageCheck,
   RefreshCcw,
@@ -22,6 +21,7 @@ import {
   Truck,
   Users,
   WalletCards,
+  Eye,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -45,10 +45,10 @@ export const adminNavigation: NavItem[] = [
   { title: "Coupons", href: "/admin/coupons", icon: TicketPercent },
   { title: "Reviews", href: "/admin/reviews", icon: ShieldCheck },
   { title: "Shipping", href: "/admin/shipping", icon: Truck },
+  { title: "Visitors", href: "/admin/visitors", icon: Eye },
   { title: "Reports", href: "/admin/reports", icon: FileBarChart },
   { title: "Notifications", href: "/admin/notifications", icon: Bell },
   { title: "Banners", href: "/admin/banners", icon: Image },
-  { title: "Support", href: "/admin/support", icon: LifeBuoy },
   { title: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import {
   Activity,
   BadgePercent,
   Bell,
+  Camera,
   CircleDollarSign,
   CreditCard,
   Lock,
@@ -112,6 +113,24 @@ export function AdminSettingsShell({ user, platformSettings, activityLogs }: Pro
   const [phone, setPhone] = useState(user.phone ?? "");
   const [image, setImage] = useState(user.image ?? "");
   const [newEmail, setNewEmail] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Please select a JPG, PNG, or WEBP image."); return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB."); return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImage(ev.target?.result as string);
+      toast.success("Photo selected — click Save Changes to apply.");
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Security
   const [currentPwd, setCurrentPwd] = useState("");
@@ -202,25 +221,38 @@ export function AdminSettingsShell({ user, platformSettings, activityLogs }: Pro
             <>
               <Section title="Profile Information" description="Update your admin profile details.">
                 <div className="space-y-4">
-                  {user.image && (
-                    <div className="flex items-center gap-4">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={user.image} alt="" className="h-14 w-14 rounded-full object-cover border border-zinc-200" />
-                      <div>
-                        <p className="text-sm font-medium text-zinc-800">{user.name}</p>
-                        <p className="text-xs text-zinc-500">{user.email}</p>
-                        <span className="text-xs font-medium text-accent-500 bg-accent-50 px-2 py-0.5 rounded-full">Super Admin</span>
-                      </div>
+                  {/* Avatar upload */}
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt="" className="h-16 w-16 rounded-full object-cover border-2 border-zinc-200" />
+                      ) : (
+                        <div className="h-16 w-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-xl font-black">
+                          {name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-brand-500 hover:bg-brand-600 flex items-center justify-center border-2 border-white"
+                      >
+                        <Camera className="w-3 h-3 text-white" />
+                      </button>
+                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoSelect} />
                     </div>
-                  )}
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-800">{user.name}</p>
+                      <p className="text-xs text-zinc-500">{user.email}</p>
+                      <span className="text-xs font-medium text-accent-500 bg-accent-50 px-2 py-0.5 rounded-full">Super Admin</span>
+                      <p className="text-xs text-zinc-400 mt-1">JPG, PNG or WEBP · max 2MB</p>
+                    </div>
+                  </div>
                   <Field label="Full Name *">
                     <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
                   </Field>
                   <Field label="Phone Number">
                     <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92 300 1234567" />
-                  </Field>
-                  <Field label="Profile Picture URL">
-                    <input className={inputCls} value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://…" />
                   </Field>
                   <button type="button" disabled={isPending}
                     onClick={() => run(() => updatePersonalInfo({ name, phone: phone || undefined, image: image || undefined }))}

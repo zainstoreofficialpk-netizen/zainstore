@@ -6,6 +6,7 @@ import { NotificationType, UserRole } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -34,13 +35,12 @@ export async function sendMessageToAdminAction(body: string): Promise<ActionResu
     });
 
     // Notify admin
-    await db.notification.create({
-      data: {
-        userId: admin.id,
-        type: NotificationType.SYSTEM,
-        title: "New message from a vendor",
-        body: body.length > 80 ? body.slice(0, 80) + "…" : body,
-      },
+    await createNotification({
+      userId: admin.id,
+      type: NotificationType.SYSTEM,
+      title: "New message from a vendor",
+      body: body.length > 80 ? body.slice(0, 80) + "…" : body,
+      url: "/admin/notifications",
     });
 
     revalidatePath("/vendor/messages");

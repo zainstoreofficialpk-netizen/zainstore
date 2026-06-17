@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult<T = void> =
   | { success: true; message: string; data?: T }
@@ -84,6 +85,11 @@ export async function createProductAction(
     const { vendor } = await requireVendor();
     if (!vendor.store?.id) return { success: false, error: "You must have a store to create products." };
 
+    // Weight required for review/active products
+    if (data.status === "PENDING_REVIEW" && (!data.weight || parseInt(data.weight) <= 0)) {
+      return { success: false, error: "Product weight (grams) is required. Delivery charges cannot be calculated without it." };
+    }
+
     // Check slug uniqueness
     const slugExists = await db.product.findUnique({ where: { slug: data.slug } });
     if (slugExists) return { success: false, error: "This slug is already in use. Please modify it." };
@@ -156,14 +162,12 @@ export async function createProductAction(
     if (data.status === "PENDING_REVIEW") {
       const admin = await db.user.findFirst({ where: { role: "SUPER_ADMIN" }, select: { id: true } });
       if (admin) {
-        await db.notification.create({
-          data: {
-            userId: admin.id,
-            type: NotificationType.VENDOR,
-            title: "New Product Pending Review",
-            body: `"${data.name}" has been submitted for approval.`,
-            data: { productId: product.id },
-          },
+        await createNotification({
+          userId: admin.id,
+          type: NotificationType.VENDOR,
+          title: "New Product Pending Review",
+          body: `"${data.name}" has been submitted for approval.`,
+          url: "/admin/products",
         });
       }
     }
@@ -186,6 +190,11 @@ export async function updateProductAction(
 
     const existing = await db.product.findFirst({ where: { id: productId, vendorId: vendor.id } });
     if (!existing) return { success: false, error: "Product not found." };
+
+    // Weight required for review/active products
+    if (data.status === "PENDING_REVIEW" && (!data.weight || parseInt(data.weight) <= 0)) {
+      return { success: false, error: "Product weight (grams) is required. Delivery charges cannot be calculated without it." };
+    }
 
     // Check slug uniqueness (excluding this product)
     const slugConflict = await db.product.findFirst({

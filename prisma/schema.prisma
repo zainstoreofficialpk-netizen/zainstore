@@ -248,9 +248,14 @@ model VendorProfile {
   iban               String?
   shippingSettings   Json?
   taxSettings        Json?
-  commissionType     CommissionType?
-  commissionValue    Decimal?             @db.Decimal(12, 2)
-  store              Store?
+  commissionType      CommissionType?
+  commissionValue     Decimal?             @db.Decimal(12, 2)
+  postexPickupCode    String?
+  postexReturnCode    String?
+  cnicFront           String?
+  cnicBack            String?
+  bankCheque          String?
+  store               Store?
   products           Product[]
   orders             OrderItem[]
   withdrawals        Withdrawal[]
@@ -283,6 +288,8 @@ model Store {
   shippingPolicy String?
   paymentPolicy  String?
   hours          Json?
+  featured       Boolean         @default(false)
+  featuredOrder  Int?
   vacationMode   Boolean         @default(false)
   inquiryEnabled Boolean         @default(true)
   products       Product[]
@@ -452,6 +459,8 @@ model ProductImage {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   alt       String?
+  caption   String?
+  title     String?
   sortOrder Int     @default(0)
 }
 
@@ -487,6 +496,8 @@ model Order {
   trackingNumber    String?
   trackingUrl       String?
   estimatedDelivery DateTime?
+  postexBookedAt    DateTime?
+  postexAwbNumber   String?
   deliveredAt       DateTime?
   cancelledAt       DateTime?
   items             OrderItem[]
@@ -918,3 +929,16 @@ model ShipmentTrackingProvider {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model PageVisit {
+  id        String   @id @default(cuid())
+  sessionId String
+  path      String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+

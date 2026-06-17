@@ -32,13 +32,16 @@ const vendorSchema = z.object({
     .min(2, "Store URL must be at least 2 characters")
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Store URL must contain only lowercase letters, numbers, and hyphens"),
   storeDescription: z.string().min(10, "Description must be at least 10 characters"),
-  storeAddress: z.string().optional(),
-  storePhone: z.string().optional(),
+  storeAddress: z.string().min(1, "Store address is required"),
+  storePhone: z.string().min(10, "Enter a valid store phone number"),
   storeEmail: z.string().email().optional().or(z.literal("")),
-  bankName: z.string().optional(),
-  accountTitle: z.string().optional(),
-  accountNumber: z.string().optional(),
+  bankName: z.string().min(1, "Bank name is required"),
+  accountTitle: z.string().min(1, "Account title is required"),
+  accountNumber: z.string().min(1, "Account number is required"),
   iban: z.string().optional(),
+  cnicFront: z.string().optional(),
+  cnicBack: z.string().optional(),
+  bankCheque: z.string().optional(),
 });
 
 // ─── Register Customer ─────────────────────────────────────────────────────────
@@ -105,11 +108,14 @@ export async function registerVendor(data: z.infer<typeof vendorSchema>): Promis
       phone: parsed.data.phone,
       vendorProfile: {
         create: {
-          status: VendorStatus.PENDING_APPROVAL, // explicit — stays pending until admin approves
+          status: VendorStatus.PENDING_APPROVAL,
           bankName: parsed.data.bankName || null,
           accountTitle: parsed.data.accountTitle || null,
           accountNumber: parsed.data.accountNumber || null,
           iban: parsed.data.iban || null,
+          cnicFront: parsed.data.cnicFront || null,
+          cnicBack: parsed.data.cnicBack || null,
+          bankCheque: parsed.data.bankCheque || null,
           store: {
             create: {
               name: parsed.data.storeName,
@@ -131,7 +137,13 @@ export async function registerVendor(data: z.infer<typeof vendorSchema>): Promis
 
   // Notify admin of the new application (non-blocking)
   if (user.vendorProfile) {
-    notifyAdminNewVendor(user.vendorProfile.id, parsed.data.storeName, parsed.data.name).catch(() => {});
+    notifyAdminNewVendor(
+      user.vendorProfile.id,
+      parsed.data.storeName,
+      parsed.data.name,
+      parsed.data.email,
+      parsed.data.phone,
+    ).catch(() => {});
   }
 
   await sendEmail({

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronRight, Edit2, FolderOpen, Plus, Trash2, X } from "lucide-react";
+import { useState, useTransition, useRef } from "react";
+import { ChevronRight, Edit2, FolderOpen, Plus, Trash2, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,14 @@ import {
   createCategoryAction,
   updateCategoryAction,
   deleteCategoryAction,
+  uploadCategoryImage,
 } from "@/lib/admin/category-actions";
 
 type Category = {
   id: string;
   name: string;
   slug: string;
+  imageUrl?: string | null;
   parentId: string | null;
   commissionType: string | null;
   commissionValue: any;
@@ -42,15 +44,37 @@ function CategoryForm({
   const [form, setForm] = useState({
     name: editing?.name ?? "",
     slug: editing?.slug ?? "",
+    imageUrl: editing?.imageUrl ?? "",
     parentId: editing?.parentId ?? "",
     commissionType: editing?.commissionType ?? "",
     commissionValue: editing?.commissionValue ? String(editing.commissionValue) : "",
   });
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
 
   const parents = categories.filter(
     (c) => !c.parentId && c.id !== editing?.id,
   );
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadCategoryImage(fd);
+      if (res.success) {
+        setForm((f) => ({ ...f, imageUrl: res.url }));
+        toast.success("Image uploaded.");
+      } else {
+        toast.error(res.error);
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function handleSubmit() {
     if (!form.name.trim()) { toast.error("Name is required."); return; }
@@ -60,6 +84,7 @@ function CategoryForm({
       const payload = {
         name: form.name.trim(),
         slug: form.slug.trim(),
+        imageUrl: form.imageUrl.trim() || null,
         parentId: form.parentId || null,
         commissionType: form.commissionType || null,
         commissionValue: form.commissionValue ? parseFloat(form.commissionValue) : null,
@@ -105,6 +130,54 @@ function CategoryForm({
               placeholder="mens-clothing"
             />
             <p className="mt-1 text-xs text-zinc-400">URL-friendly identifier, auto-generated from name.</p>
+          </div>
+
+          {/* Image upload */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-zinc-700">Thumbnail Image</label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <div
+              onClick={() => !uploading && fileRef.current?.click()}
+              className={`relative flex h-28 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+                uploading ? "cursor-wait opacity-60 border-zinc-200" : "border-zinc-200 hover:border-brand-400 hover:bg-brand-50/30"
+              }`}
+            >
+              {form.imageUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.imageUrl} alt="category thumbnail" className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                    <span className="text-xs font-semibold text-white">Click to change</span>
+                  </div>
+                </>
+              ) : uploading ? (
+                <div className="flex flex-col items-center gap-2 text-zinc-400">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-brand-500" />
+                  <span className="text-xs">Uploading…</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-zinc-400">
+                  <Upload size={20} />
+                  <span className="text-xs font-medium">Click to upload image</span>
+                  <span className="text-[10px] text-zinc-300">JPG, PNG, WebP · max 5 MB</span>
+                </div>
+              )}
+            </div>
+            {form.imageUrl && (
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                className="mt-1.5 text-xs text-zinc-400 hover:text-rose-500 transition-colors"
+              >
+                Remove image
+              </button>
+            )}
           </div>
 
           <div>
@@ -190,6 +263,11 @@ function CategoryRow({
       <div className="flex items-center gap-3 min-w-0">
         {isChild
           ? <ChevronRight size={14} className="shrink-0 text-zinc-300" />
+          : category.imageUrl
+          ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={category.imageUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+          )
           : <FolderOpen size={16} className="shrink-0 text-brand-500" />
         }
         <div className="min-w-0">

@@ -8,6 +8,7 @@ import { NotificationType } from "@prisma/client";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { upsertVendorTrustScore } from "@/lib/trust-score";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -46,13 +47,12 @@ export async function replyToReviewAction(data: z.infer<typeof replySchema>): Pr
     });
 
     // Notify the reviewer
-    await db.notification.create({
-      data: {
-        userId: review.user.id,
-        type: NotificationType.REVIEW,
-        title: "Vendor replied to your review",
-        body: `"${reply.slice(0, 120)}${reply.length > 120 ? "…" : ""}"`,
-      },
+    await createNotification({
+      userId: review.user.id,
+      type: NotificationType.REVIEW,
+      title: "Vendor replied to your review",
+      body: `"${reply.slice(0, 120)}${reply.length > 120 ? "…" : ""}"`,
+      url: "/customer/reviews",
     });
 
     // Update trust score (response rate changed)

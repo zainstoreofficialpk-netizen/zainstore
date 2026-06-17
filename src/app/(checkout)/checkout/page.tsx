@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { CheckoutClient } from "@/components/storefront/checkout-client";
+import { getShippingSettings } from "@/lib/shipping";
 
 export const metadata = {
   title: "Checkout — ZainStore.pk",
@@ -9,6 +10,7 @@ export const metadata = {
 
 export default async function CheckoutPage() {
   const session = await getServerSession(authOptions);
+  const shippingSettings = await getShippingSettings();
 
   const user = session?.user
     ? {
@@ -19,5 +21,5 @@ export default async function CheckoutPage() {
       }
     : null;
 
-  return <CheckoutClient user={user} />;
+  return <CheckoutClient user={user} shippingSettings={shippingSettings} />;
 }

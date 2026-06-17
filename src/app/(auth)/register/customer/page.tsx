@@ -50,9 +50,8 @@ export default function CustomerRegisterPage() {
       <div className="w-full max-w-md">
 
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
-            <Store size={24} aria-hidden />
-          </span>
+          {/* eslint-disable-next-line /next/no-img-element */}
+          <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-14 w-14 object-contain" />
           <div>
             <h1 className="text-2xl font-bold text-zinc-950">Create your account</h1>
             <p className="mt-1 text-sm text-zinc-500">Shop on ZainStore.pk</p>

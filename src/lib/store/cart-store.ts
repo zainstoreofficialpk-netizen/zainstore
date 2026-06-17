@@ -9,7 +9,10 @@ export type CartItem = {
   salePrice: number | null;
   imageUrl: string | null;
   storeName: string | null;
+  storeId: string | null;
+  vendorId: string | null;
   quantity: number;
+  weightGrams: number; // product weight in grams, 0 if not set
 };
 
 type CartStore = {

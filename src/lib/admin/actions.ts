@@ -6,6 +6,7 @@ import { VendorStatus, WithdrawalStatus, RefundStatus, ProductStatus, Notificati
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -186,13 +187,12 @@ export async function rejectProduct(productId: string, reason: string): Promise<
       data: { status: ProductStatus.REJECTED, rejectionReason: reason },
       include: { vendor: { select: { userId: true } } },
     });
-    await db.notification.create({
-      data: {
-        userId: product.vendor.userId,
-        type: NotificationType.VENDOR,
-        title: "Product Rejected",
-        body: `Your product "${product.name}" was rejected. Reason: ${reason}`,
-      },
+    await createNotification({
+      userId: product.vendor.userId,
+      type: NotificationType.VENDOR,
+      title: "Product Rejected",
+      body: `Your product "${product.name}" was rejected. Reason: ${reason}`,
+      url: "/vendor/products",
     });
     revalidatePath("/admin");
     revalidatePath("/admin/products");
@@ -212,13 +212,12 @@ export async function requestProductChanges(productId: string, note: string): Pr
       data: { status: ProductStatus.CHANGES_REQUESTED, adminNote: note },
       include: { vendor: { select: { userId: true } } },
     });
-    await db.notification.create({
-      data: {
-        userId: product.vendor.userId,
-        type: NotificationType.VENDOR,
-        title: "Changes Requested for Product",
-        body: `Your product "${product.name}" needs changes before it can go live. Admin note: ${note}`,
-      },
+    await createNotification({
+      userId: product.vendor.userId,
+      type: NotificationType.VENDOR,
+      title: "Changes Requested for Product",
+      body: `Your product "${product.name}" needs changes before it can go live. Admin note: ${note}`,
+      url: "/vendor/products",
     });
     revalidatePath("/admin");
     revalidatePath("/admin/products");
@@ -237,13 +236,12 @@ export async function approveProductById(productId: string): Promise<ActionResul
       data: { status: ProductStatus.ACTIVE, rejectionReason: null, adminNote: null },
       include: { vendor: { select: { userId: true } } },
     });
-    await db.notification.create({
-      data: {
-        userId: product.vendor.userId,
-        type: NotificationType.VENDOR,
-        title: "Product Approved",
-        body: `Great news! Your product "${product.name}" has been approved and is now live on ZainStore.`,
-      },
+    await createNotification({
+      userId: product.vendor.userId,
+      type: NotificationType.VENDOR,
+      title: "Product Approved",
+      body: `Great news! Your product "${product.name}" has been approved and is now live on ZainStore.`,
+      url: "/vendor/products",
     });
     revalidatePath("/admin");
     revalidatePath("/admin/products");
@@ -263,5 +261,17 @@ export async function toggleProductFeatured(productId: string, featured: boolean
     return { success: true, message: featured ? "Product marked as featured." : "Product removed from featured." };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Failed to update product." };
+  }
+}
+
+export async function toggleStoreFeatured(storeId: string, featured: boolean): Promise<ActionResult> {
+  try {
+    await requireAdmin();
+    await db.store.update({ where: { id: storeId }, data: { featured } });
+    revalidatePath("/admin/vendors");
+    revalidatePath("/shop");
+    return { success: true, message: featured ? "Store marked as featured." : "Store removed from featured." };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Failed to update store." };
   }
 }

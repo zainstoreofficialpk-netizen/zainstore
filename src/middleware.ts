@@ -19,10 +19,10 @@ export default withAuth(
     const impersonateCookie = req.cookies.get(IMPERSONATE_COOKIE)?.value;
 
     // ── Authenticated users must not see auth pages (fixes back-button bug) ────
-    // withAuth only calls this function when authorized() returns true (i.e. token exists).
-    // So if we're here and on an auth path, the user is logged in → redirect to dashboard.
-    if (AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-      return NextResponse.redirect(new URL(dashboardFor(role ?? ""), req.url));
+    // Only redirect if the user is actually logged in (has a role/token).
+    // Without this guard, unauthenticated users hitting /register/* get redirect-looped.
+    if (role && AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      return NextResponse.redirect(new URL(dashboardFor(role), req.url));
     }
 
     // ── Cross-role isolation ──────────────────────────────────────────────────

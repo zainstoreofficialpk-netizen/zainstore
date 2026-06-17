@@ -22,12 +22,55 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await db.product.findUnique({
     where: { slug, status: "ACTIVE" },
-    select: { name: true, shortDescription: true, seoTitle: true, seoDescription: true },
+    select: {
+      name: true, description: true, shortDescription: true,
+      seoTitle: true, seoDescription: true, seoKeywords: true,
+      price: true, salePrice: true, stockStatus: true, sku: true,
+      images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true, alt: true } },
+      category: { select: { name: true } },
+      store: { select: { name: true } },
+      brand: { select: { name: true } },
+    },
   });
   if (!product) return {};
+
+  const title = product.seoTitle ?? `${product.name} | Buy Online in Pakistan`;
+  const description =
+    product.seoDescription ??
+    product.shortDescription ??
+    product.description?.slice(0, 160) ??
+    `Buy ${product.name} online in Pakistan. Best price, fast delivery.`;
+  const image = product.images[0]?.url;
+  const price = Number(product.salePrice ?? product.price);
+  const keywords = product.seoKeywords
+    ? [product.seoKeywords]
+    : [`${product.name}`, `buy ${product.name} Pakistan`, `${product.category?.name ?? ""} Pakistan`].filter(Boolean);
+
   return {
-    title: product.seoTitle ?? product.name,
-    description: product.seoDescription ?? product.shortDescription ?? undefined,
+    title,
+    description,
+    keywords,
+    alternates: { canonical: `https://zainstore.pk/shop/product/${slug}` },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url: `https://zainstore.pk/shop/product/${slug}`,
+      siteName: "ZainStore.pk",
+      images: image ? [{ url: image, width: 800, height: 800, alt: product.images[0]?.alt ?? product.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+    other: {
+      "product:price:amount": String(price),
+      "product:price:currency": "PKR",
+      "product:availability": product.stockStatus === "IN_STOCK" ? "in stock" : "out of stock",
+      ...(product.sku ? { "product:retailer_item_id": product.sku } : {}),
+    },
   };
 }
 
@@ -80,7 +123,7 @@ export default async function ProductPage({
         },
         include: {
           images: { take: 1, orderBy: { sortOrder: "asc" } },
-          store: { select: { name: true, slug: true } },
+          store: { select: { id: true, name: true, slug: true } },
           reviews: { where: { status: "APPROVED" }, select: { rating: true } },
         },
         take: 8,
@@ -126,7 +169,10 @@ export default async function ProductPage({
     rating: avgRating,
     reviewCount: product.reviews.length,
     storeName: product.store.name,
+    storeId: product.store.id,
+    vendorId: product.vendorId,
     imageUrl: firstImage,
+    weight: product.weight ? Number(product.weight) : null,
   };
 
   const reviewsData = product.reviews.map((r) => ({
@@ -161,6 +207,8 @@ export default async function ProductPage({
       imageUrl: p.images[0]?.url ?? null,
       storeName: p.store.name,
       storeSlug: p.store.slug,
+      storeId: p.store.id,
+      vendorId: p.vendorId,
       rating: ratingArr.length > 0 ? ratingArr.reduce((a, b) => a + b, 0) / ratingArr.length : 0,
       reviewCount: ratingArr.length,
     };
@@ -179,8 +227,63 @@ export default async function ProductPage({
     { label: product.name, href: null },
   ];
 
+  // ── JSON-LD structured data ──────────────────────────────────
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.shortDescription || product.name,
+    image: product.images.map((img) => img.url),
+    ...(product.sku ? { sku: product.sku } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand.name } } : {}),
+    ...(product.category ? { category: product.category.name } : {}),
+    offers: {
+      "@type": "Offer",
+      url: `https://zainstore.pk/shop/product/${product.slug}`,
+      priceCurrency: "PKR",
+      price: Number(product.salePrice ?? product.price),
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@type": "Organization", name: product.store.name },
+      itemCondition: "https://schema.org/NewCondition",
+    },
+    ...(product.reviews.length > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: avgRating.toFixed(1),
+            reviewCount: product.reviews.length,
+            bestRating: "5",
+            worstRating: "1",
+          },
+          review: product.reviews.slice(0, 5).map((r) => ({
+            "@type": "Review",
+            reviewRating: { "@type": "Rating", ratingValue: r.rating },
+            author: { "@type": "Person", name: r.user.name ?? "Verified Buyer" },
+            reviewBody: r.comment,
+            datePublished: r.createdAt.toISOString().split("T")[0],
+          })),
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.label,
+      ...(c.href ? { item: `https://zainstore.pk${c.href}` } : {}),
+    })),
+  };
+
   return (
     <div className="bg-zinc-50 min-h-screen pb-24 md:pb-12">
+      {/* JSON-LD structured data */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+
       {/* Track recently viewed (client) */}
       <RecentlyViewedTracker
         id={product.id}
@@ -313,6 +416,8 @@ export default async function ProductPage({
           salePrice,
           imageUrl: firstImage,
           storeName: product.store.name,
+          storeId: product.store.id,
+          vendorId: product.vendorId,
           inStock,
         }}
       />

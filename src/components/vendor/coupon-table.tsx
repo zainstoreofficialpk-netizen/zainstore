@@ -17,6 +17,7 @@ type CouponWithCount = Coupon & { _count: { usages: number } };
 type Props = {
   coupons: CouponWithCount[];
   stats: { total: number; active: number; expired: number };
+  storeName: string;
 };
 
 function formatValue(coupon: Coupon) {
@@ -28,7 +29,7 @@ function isExpired(coupon: Coupon) {
   return coupon.expiresAt ? new Date(coupon.expiresAt) < new Date() : false;
 }
 
-export function CouponTable({ coupons, stats }: Props) {
+export function CouponTable({ coupons, stats, storeName }: Props) {
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -85,7 +86,7 @@ export function CouponTable({ coupons, stats }: Props) {
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/50">
                 <tr>
-                  {["Code", "Name", "Discount", "Used / Limit", "Min Order", "Expiry", "Status", "Actions"].map((h) => (
+                  {["Code", "Name", "Discount", "Created By", "Used / Limit", "Min Order", "Expiry", "Status", "Actions"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
                       {h}
                     </th>
@@ -104,6 +105,10 @@ export function CouponTable({ coupons, stats }: Props) {
                           <span>{formatValue(c)}</span>
                           <span className="text-xs text-zinc-400">{c.type === "PERCENTAGE" ? "off" : "flat"}</span>
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-zinc-800">{storeName}</p>
+                        <p className="text-[10px] text-zinc-400">Your store · vendor coupon</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-zinc-600">
                         {c._count.usages}

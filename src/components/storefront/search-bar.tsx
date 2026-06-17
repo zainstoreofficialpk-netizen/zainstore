@@ -89,7 +89,7 @@ export function SearchBar() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-zinc-100 z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-zinc-100 z-50 overflow-hidden max-w-full">
           {/* Default: recent + trending */}
           {!hasQuery && (
             <div className="p-4 space-y-4">

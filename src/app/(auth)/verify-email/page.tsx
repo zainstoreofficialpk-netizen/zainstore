@@ -27,9 +27,8 @@ export default async function VerifyEmailPage({
       <div className="w-full max-w-sm text-center">
 
         <div className="mb-8 flex justify-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
-            <Store size={24} aria-hidden />
-          </span>
+          {/* eslint-disable-next-line /next/no-img-element */}
+          <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-14 w-14 object-contain" />
         </div>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">

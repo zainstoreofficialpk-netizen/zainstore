@@ -16,7 +16,7 @@ export default async function AdminProductsPage({
 
   const [data, stats] = await Promise.all([
     getProductsForApproval({
-      status: searchParams.status ?? "PENDING_REVIEW",
+      status: searchParams.status ?? "ALL",
       search: searchParams.search,
       page: Number(searchParams.page ?? "1"),
     }),

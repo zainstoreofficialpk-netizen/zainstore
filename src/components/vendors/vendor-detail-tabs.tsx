@@ -7,6 +7,7 @@ import {
   Check,
   Edit2,
   LogIn,
+  Medal,
   MessageSquare,
   Send,
   Trash2,
@@ -31,6 +32,7 @@ import {
   editVendorAction,
   sendMessageToVendorAction,
 } from "@/lib/admin/vendor-actions";
+import { toggleStoreFeatured } from "@/lib/admin/actions";
 import type { getVendorDetail, getVendorMessages, getVendorActivityLog, getVendorRevenue } from "@/lib/admin/vendor-data";
 
 type Vendor = NonNullable<Awaited<ReturnType<typeof getVendorDetail>>>;
@@ -49,6 +51,34 @@ type Tab = "overview" | "inbox" | "activity";
 
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 
+function FeatureStoreButton({ storeId, featured }: { storeId: string; featured: boolean }) {
+  const [isFeatured, setIsFeatured] = useState(featured);
+  const [isPending, startTransition] = useTransition();
+
+  function toggle() {
+    startTransition(async () => {
+      const r = await toggleStoreFeatured(storeId, !isFeatured);
+      if (r.success) { setIsFeatured((f) => !f); toast.success(r.message); }
+      else toast.error(r.error);
+    });
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={isPending}
+      className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border py-2 text-sm font-bold transition-colors ${
+        isFeatured
+          ? "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
+          : "border-zinc-200 text-zinc-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+      }`}
+    >
+      <Medal className="h-3.5 w-3.5" />
+      {isPending ? "Saving…" : isFeatured ? "Remove from Featured" : "Mark as Featured"}
+    </button>
+  );
+}
+
 function EditVendorModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void }) {
   const [isPending, startTransition] = useTransition();
 
@@ -63,6 +93,8 @@ function EditVendorModal({ vendor, onClose }: { vendor: Vendor; onClose: () => v
         storeName: fd.get("storeName") as string,
         internalNotes: fd.get("internalNotes") as string,
         commissionValue: fd.get("commissionValue") ? Number(fd.get("commissionValue")) : undefined,
+        postexPickupCode: (fd.get("postexPickupCode") as string) || null,
+        postexReturnCode: (fd.get("postexReturnCode") as string) || null,
       });
       if (r.success) { toast.success(r.message); onClose(); }
       else toast.error(r.error);
@@ -104,6 +136,26 @@ function EditVendorModal({ vendor, onClose }: { vendor: Vendor; onClose: () => v
                 step={0.1}
                 defaultValue={vendor.commissionValue ? String(vendor.commissionValue) : ""}
                 placeholder="e.g. 12.5"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-600">PostEx Pickup Code</label>
+              <Input
+                name="postexPickupCode"
+                defaultValue={vendor.postexPickupCode ?? ""}
+                placeholder="e.g. 001"
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-600">PostEx Return Code</label>
+              <Input
+                name="postexReturnCode"
+                defaultValue={vendor.postexReturnCode ?? ""}
+                placeholder="e.g. 002"
+                className="font-mono"
               />
             </div>
           </div>
@@ -546,6 +598,7 @@ export function VendorDetailTabs({
                 { label: "Email", value: vendor.store?.email ?? "—" },
                 { label: "Phone", value: vendor.store?.phone ?? "—" },
                 { label: "Vacation Mode", value: vendor.store?.vacationMode ? "On" : "Off" },
+                { label: "Featured Store", value: (vendor.store as any)?.featured ? "Yes ★" : "No" },
                 { label: "Bank", value: vendor.bankName ?? "—" },
                 { label: "Account #", value: vendor.accountNumber ?? "—" },
                 { label: "Commission Override", value: vendor.commissionValue ? `${vendor.commissionValue}%` : "Default" },
@@ -555,8 +608,49 @@ export function VendorDetailTabs({
                   <span className="font-medium text-zinc-800">{row.value}</span>
                 </div>
               ))}
+              {vendor.store && (
+                <FeatureStoreButton
+                  storeId={vendor.store.id}
+                  featured={(vendor.store as any).featured ?? false}
+                />
+              )}
             </CardContent>
           </Card>
+
+          {/* Verification Documents */}
+          {((vendor as any).cnicFront || (vendor as any).cnicBack || (vendor as any).bankCheque) && (
+            <Card className="lg:col-span-2">
+              <CardHeader><CardTitle>Verification Documents</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {[
+                    { label: "CNIC Front", url: (vendor as any).cnicFront },
+                    { label: "CNIC Back", url: (vendor as any).cnicBack },
+                    { label: "Bank Cheque / Screenshot", url: (vendor as any).bankCheque },
+                  ].map((doc) => (
+                    <div key={doc.label}>
+                      <p className="mb-1.5 text-xs font-medium text-zinc-500 uppercase tracking-wide">{doc.label}</p>
+                      {doc.url ? (
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={doc.url}
+                            alt={doc.label}
+                            className="h-40 w-full rounded-lg border border-zinc-200 object-cover hover:opacity-90 transition cursor-zoom-in"
+                          />
+                          <p className="mt-1 text-xs text-brand-600 hover:underline">View full size ↗</p>
+                        </a>
+                      ) : (
+                        <div className="flex h-40 w-full items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50 text-xs text-zinc-400">
+                          Not uploaded
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {vendor.internalNotes && (
             <Card className="lg:col-span-2">

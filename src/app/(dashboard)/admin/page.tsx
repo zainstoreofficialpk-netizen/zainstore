@@ -15,6 +15,7 @@ import {
   getPendingWithdrawals,
   getPendingRefunds,
 } from "@/lib/admin/dashboard-data";
+import { getVisitorStats } from "@/lib/admin/visitor-data";
 
 import { AdminStatCards } from "@/components/admin/admin-stat-cards";
 import { AdminRevenueChart } from "@/components/admin/admin-revenue-chart";
@@ -25,6 +26,7 @@ import { TopProductsTable } from "@/components/admin/top-products-table";
 import { TopVendorsTable } from "@/components/admin/top-vendors-table";
 import { LowStockAlerts } from "@/components/admin/low-stock-alerts";
 import { PendingQueue } from "@/components/admin/pending-queue";
+import { VisitorStats } from "@/components/admin/visitor-stats";
 
 export default async function AdminDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -41,6 +43,7 @@ export default async function AdminDashboardPage() {
     pendingVendors,
     pendingWithdrawals,
     pendingRefunds,
+    visitorStats,
   ] = await Promise.all([
     getAdminDashboardStats(),
     getPendingActionCounts(),
@@ -52,6 +55,7 @@ export default async function AdminDashboardPage() {
     getPendingVendors(5),
     getPendingWithdrawals(5),
     getPendingRefunds(5),
+    getVisitorStats(),
   ]);
 
   return (
@@ -77,6 +81,12 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <TopProductsTable products={topProducts} />
         <TopVendorsTable vendors={topVendors} />
+      </div>
+
+      {/* Visitor analytics */}
+      <div>
+        <h2 className="mb-4 text-base font-semibold text-zinc-900">Visitor Analytics</h2>
+        <VisitorStats stats={visitorStats} />
       </div>
 
       {/* Low stock alerts */}

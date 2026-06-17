@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
-
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -18,6 +18,24 @@ async function requireAdmin() {
 
 function toSlug(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+
+export async function uploadCategoryImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+  await requireAdmin();
+  const file = formData.get("file") as File | null;
+  if (!file || !file.size) return { success: false, error: "No file provided." };
+  if (!file.type.startsWith("image/")) return { success: false, error: "File must be an image." };
+  if (file.size > 5 * 1024 * 1024) return { success: false, error: "Image must be under 5 MB." };
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  if (!["jpg","jpeg","png","webp","gif"].includes(ext)) return { success: false, error: "Only JPG, PNG, WebP or GIF allowed." };
+  try {
+    const url = await uploadToCloudinary(file, "categories");
+    return { success: true, url };
+  } catch {
+    return { success: false, error: "Upload failed. Please try again." };
+  }
 }
 
 // ── Category actions ──────────────────────────────────────────────────────────
@@ -33,6 +51,7 @@ const categorySchema = z.object({
 export async function createCategoryAction(data: {
   name: string;
   slug: string;
+  imageUrl?: string | null;
   parentId?: string | null;
   commissionType?: string | null;
   commissionValue?: number | null;
@@ -49,6 +68,7 @@ export async function createCategoryAction(data: {
       data: {
         name: parsed.data.name,
         slug: parsed.data.slug,
+        imageUrl: data.imageUrl || null,
         parentId: parsed.data.parentId || null,
         commissionType: (parsed.data.commissionType as any) || null,
         commissionValue: parsed.data.commissionValue ?? null,
@@ -67,6 +87,7 @@ export async function updateCategoryAction(
   data: {
     name: string;
     slug: string;
+    imageUrl?: string | null;
     parentId?: string | null;
     commissionType?: string | null;
     commissionValue?: number | null;
@@ -77,7 +98,6 @@ export async function updateCategoryAction(
     const parsed = categorySchema.safeParse(data);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-    // Prevent circular parent (can't set own id as parent or a child as parent)
     if (parsed.data.parentId === id) return { success: false, error: "A category cannot be its own parent." };
 
     const slugConflict = await db.category.findFirst({
@@ -90,6 +110,7 @@ export async function updateCategoryAction(
       data: {
         name: parsed.data.name,
         slug: parsed.data.slug,
+        imageUrl: data.imageUrl !== undefined ? (data.imageUrl || null) : undefined,
         parentId: parsed.data.parentId || null,
         commissionType: (parsed.data.commissionType as any) || null,
         commissionValue: parsed.data.commissionValue ?? null,

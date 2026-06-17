@@ -7,6 +7,8 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
+import { sendEmail, vendorApprovedEmailHtml, vendorRejectedEmailHtml, vendorSignupAdminEmailHtml } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -39,15 +41,14 @@ async function notifyAdmin(title: string, body: string, data?: Prisma.InputJsonV
     select: { id: true },
   });
   if (!admin) return;
-  await db.notification.create({
-    data: {
-      userId: admin.id,
-      type: NotificationType.VENDOR,
-      title,
-      body,
-      data: data ?? undefined,
-    },
+  await createNotification({
+    userId: admin.id,
+    type: NotificationType.VENDOR,
+    title,
+    body,
+    url: "/admin/vendors",
   });
+  void data;
 }
 
 async function notifyVendorUser(vendorId: string, title: string, body: string, data?: Prisma.InputJsonValue) {
@@ -56,15 +57,14 @@ async function notifyVendorUser(vendorId: string, title: string, body: string, d
     select: { userId: true },
   });
   if (!vendor) return;
-  await db.notification.create({
-    data: {
-      userId: vendor.userId,
-      type: NotificationType.VENDOR,
-      title,
-      body,
-      data: data ?? undefined,
-    },
+  await createNotification({
+    userId: vendor.userId,
+    type: NotificationType.VENDOR,
+    title,
+    body,
+    url: "/vendor",
   });
+  void data;
 }
 
 // ── Status actions ────────────────────────────────────────────────────────────
@@ -75,12 +75,17 @@ export async function approveVendorAction(vendorId: string): Promise<ActionResul
     const vendor = await db.vendorProfile.update({
       where: { id: vendorId },
       data: { status: VendorStatus.ACTIVE, approvedAt: new Date(), rejectedAt: null },
-      include: { store: { select: { name: true } }, user: { select: { name: true } } },
+      include: { store: { select: { name: true } }, user: { select: { name: true, email: true } } },
     });
     await Promise.all([
       logActivity(admin.id, "vendor.approved", vendorId, { storeName: vendor.store?.name }),
       notifyVendorUser(vendorId, "Application Approved! 🎉", `Your vendor application for ${vendor.store?.name ?? "your store"} has been approved. You can now start listing products.`),
     ]);
+    void sendEmail({
+      to: vendor.user.email,
+      subject: "Your ZainStore.pk store is approved! 🎉",
+      html: vendorApprovedEmailHtml({ vendorName: vendor.user.name ?? "Vendor", storeName: vendor.store?.name ?? "Your Store" }),
+    });
     revalidatePath("/admin/vendors");
     revalidatePath(`/admin/vendors/${vendorId}`);
     return { success: true, message: `${vendor.store?.name ?? "Vendor"} approved successfully.` };
@@ -95,12 +100,17 @@ export async function rejectVendorAction(vendorId: string, reason: string): Prom
     const vendor = await db.vendorProfile.update({
       where: { id: vendorId },
       data: { status: VendorStatus.REJECTED, rejectedAt: new Date(), internalNotes: reason },
-      include: { store: { select: { name: true } } },
+      include: { store: { select: { name: true } }, user: { select: { name: true, email: true } } },
     });
     await Promise.all([
       logActivity(admin.id, "vendor.rejected", vendorId, { reason }),
       notifyVendorUser(vendorId, "Application Rejected", `Your vendor application has been reviewed. Reason: ${reason}`),
     ]);
+    void sendEmail({
+      to: vendor.user.email,
+      subject: "Update on your ZainStore.pk store application",
+      html: vendorRejectedEmailHtml({ vendorName: vendor.user.name ?? "Vendor", storeName: vendor.store?.name ?? "Your Store", reason }),
+    });
     revalidatePath("/admin/vendors");
     revalidatePath(`/admin/vendors/${vendorId}`);
     return { success: true, message: `${vendor.store?.name ?? "Vendor"} rejected.` };
@@ -158,6 +168,8 @@ const editVendorSchema = z.object({
   storeName: z.string().min(2).optional(),
   internalNotes: z.string().optional(),
   commissionValue: z.coerce.number().min(0).max(100).optional(),
+  postexPickupCode: z.string().nullable().optional(),
+  postexReturnCode: z.string().nullable().optional(),
 });
 
 export async function editVendorAction(vendorId: string, data: z.infer<typeof editVendorSchema>): Promise<ActionResult> {
@@ -183,6 +195,12 @@ export async function editVendorAction(vendorId: string, data: z.infer<typeof ed
           internalNotes: parsed.data.internalNotes,
           ...(parsed.data.commissionValue !== undefined
             ? { commissionValue: parsed.data.commissionValue }
+            : {}),
+          ...(parsed.data.postexPickupCode !== undefined
+            ? { postexPickupCode: parsed.data.postexPickupCode }
+            : {}),
+          ...(parsed.data.postexReturnCode !== undefined
+            ? { postexReturnCode: parsed.data.postexReturnCode }
             : {}),
         },
       }),
@@ -328,12 +346,26 @@ export async function sendMessageToVendorAction(
 // ── Notify admin of new vendor registration ────────────────────────────────────
 // Called from vendor registration flow (can be triggered from register action)
 
-export async function notifyAdminNewVendor(vendorId: string, storeName: string, ownerName: string) {
+export async function notifyAdminNewVendor(
+  vendorId: string,
+  storeName: string,
+  ownerName: string,
+  ownerEmail: string,
+  ownerPhone?: string | null,
+) {
   await notifyAdmin(
     "New Vendor Application",
     `${ownerName} applied to open "${storeName}". Review and approve or reject.`,
     { vendorId },
   );
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    void sendEmail({
+      to: adminEmail,
+      subject: `New Vendor Application: ${storeName} — ZainStore.pk`,
+      html: vendorSignupAdminEmailHtml({ vendorName: ownerName, storeName, email: ownerEmail, phone: ownerPhone }),
+    });
+  }
 }
 
 // ── Mark notification read ────────────────────────────────────────────────────

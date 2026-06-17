@@ -134,15 +134,14 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center gap-3 h-16">
           {/* Hamburger (mobile) */}
-          <button onClick={onMenuOpen} className="md:hidden p-2 text-zinc-600 hover:text-zinc-900 -ml-1">
+          <button onClick={onMenuOpen} className="md:hidden p-2.5 -ml-1 text-zinc-600 hover:text-zinc-900 active:bg-zinc-100 rounded-xl">
             <Menu className="h-5 w-5" />
           </button>
 
           {/* Logo */}
-          <Link href="/shop" className="shrink-0 flex items-center gap-1.5">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 flex items-center justify-center shadow-sm">
-              <span className="text-white font-black text-base leading-none">Z</span>
-            </div>
+          <Link href="/shop" className="shrink-0 flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-8 w-8 object-contain" />
             <span className="hidden sm:block font-black text-zinc-900 text-[17px] tracking-tight">
               Zain<span className="text-brand-500">Store</span>
               <span className="text-zinc-300 font-normal text-xs">.pk</span>
@@ -155,7 +154,7 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
           </div>
 
           {/* Right cluster */}
-          <div className="flex items-center gap-1 ml-auto md:ml-0">
+          <div className="flex items-center gap-1 ml-auto md:ml-0 shrink-0">
 
             {/* Wishlist */}
             <Link href={user ? "/customer/wishlist" : "/login"}
@@ -310,7 +309,7 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
               Stores
             </Link>
             <Link
-              href="/shop"
+              href="/shop/browse"
               className="px-5 py-3 text-sm font-semibold text-zinc-700 hover:text-brand-500 hover:bg-zinc-50 transition-colors whitespace-nowrap"
             >
               Shop

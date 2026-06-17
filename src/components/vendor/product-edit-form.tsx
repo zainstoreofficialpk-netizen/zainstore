@@ -115,7 +115,16 @@ export function ProductEditForm({
     status: (product.status === "ACTIVE" || product.status === "REJECTED") ? "PENDING_REVIEW" : product.status as "DRAFT" | "PENDING_REVIEW",
   });
 
+  const [weightError, setWeightError] = useState(false);
+
   function handleSubmit(targetStatus: "DRAFT" | "PENDING_REVIEW") {
+    if (targetStatus === "PENDING_REVIEW" && (!form.weight || parseInt(form.weight) <= 0)) {
+      setWeightError(true);
+      toast.error("Product weight is required before submitting for review.");
+      document.getElementById("product-weight-field")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setWeightError(false);
     startTransition(async () => {
       const r = await updateProductAction(product.id, { ...form, status: targetStatus });
       if (r.success) {
@@ -278,7 +287,7 @@ export function ProductEditForm({
           <p className="mt-0.5 text-xs text-zinc-400">Pakistan COD only — charge calculated from weight.</p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
+          <div id="product-weight-field">
             <label className="mb-1.5 block text-sm font-medium text-zinc-700">
               Product Weight (grams) <span className="text-rose-500">*</span>
             </label>
@@ -287,9 +296,20 @@ export function ProductEditForm({
               min={1}
               step={1}
               value={form.weight}
-              onChange={(e) => setForm({ ...form, weight: e.target.value })}
+              onChange={(e) => { setForm({ ...form, weight: e.target.value }); setWeightError(false); }}
               placeholder="e.g. 750"
+              className={weightError ? "border-rose-400 focus-visible:ring-rose-300" : ""}
             />
+            {weightError && (
+              <p className="mt-1.5 text-xs text-rose-500">
+                Weight is required to calculate delivery charges for customers.
+              </p>
+            )}
+            {!form.weight && !weightError && (
+              <p className="mt-1.5 text-xs text-amber-600">
+                ⚠️ Without weight, delivery charges cannot be calculated at checkout.
+              </p>
+            )}
           </div>
 
           {(() => {

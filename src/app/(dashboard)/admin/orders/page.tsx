@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/format";
 import { EARNINGS_HOLD_DAYS } from "@/lib/admin/withdrawal-data";
 import { OrderStatusUpdater } from "@/components/admin/order-status-updater";
+import { AdminOrderPostEx } from "@/components/admin/admin-order-postex";
 
 const ORDER_TONE: Record<string, "success" | "warning" | "danger" | "accent" | "muted"> = {
   PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent",
@@ -39,11 +41,20 @@ export default async function AdminOrdersPage({
       take: LIMIT,
       orderBy: { createdAt: "desc" },
       include: {
-        customer: { select: { name: true, email: true } },
+        customer: { select: { name: true, email: true, phone: true } },
         items: {
-          take: 1,
-          include: { vendor: { include: { store: { select: { name: true } } } } },
+          include: {
+            product: { select: { name: true } },
+            vendor: {
+              select: {
+                postexPickupCode: true,
+                postexReturnCode: true,
+                store: { select: { name: true } },
+              },
+            },
+          },
         },
+        shippingAddress: { select: { city: true, line1: true } },
       },
     }),
     db.order.count({ where }),
@@ -125,7 +136,7 @@ export default async function AdminOrdersPage({
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/50">
                 <tr>
-                  {["Order #", "Customer", "Vendor", "Total", "Payment", "Status", "Delivered", "Actions"].map(
+                  {["Order #", "Customer", "Vendor", "Total", "Payment", "Status", "PostEx AWB", "Delivered", "Actions"].map(
                     (h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
                         {h}
@@ -146,8 +157,10 @@ export default async function AdminOrdersPage({
 
                   return (
                     <tr key={order.id} className="hover:bg-zinc-50/60">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-brand-600">
-                        {order.orderNumber}
+                      <td className="px-4 py-3">
+                        <Link href={`/admin/orders/${order.id}`} className="font-mono text-xs font-semibold text-brand-600 hover:underline">
+                          {order.orderNumber}
+                        </Link>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium">{order.customer.name}</p>
@@ -168,6 +181,22 @@ export default async function AdminOrdersPage({
                         <Badge tone={ORDER_TONE[order.status] ?? "muted"}>
                           {order.status}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <AdminOrderPostEx
+                          orderId={order.id}
+                          orderNumber={order.orderNumber}
+                          grandTotal={Number(order.grandTotal)}
+                          customerName={order.customer.name ?? ""}
+                          customerPhone={(order.customer as { phone?: string | null }).phone ?? ""}
+                          deliveryAddress={order.shippingAddress ? `${order.shippingAddress.line1}, ${order.shippingAddress.city}` : ""}
+                          deliveryCity={order.shippingAddress?.city ?? ""}
+                          items={order.items.map(i => ({ name: i.product?.name ?? "Item", quantity: i.quantity, unitPrice: Number(i.unitPrice) }))}
+                          existingAwb={order.postexAwbNumber ?? null}
+                          existingTrackingUrl={order.trackingUrl ?? null}
+                          vendorPickupCode={order.items[0]?.vendor?.postexPickupCode ?? ""}
+                          vendorReturnCode={order.items[0]?.vendor?.postexReturnCode ?? ""}
+                        />
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {order.deliveredAt ? (

@@ -7,6 +7,7 @@ import { ReviewStatus, NotificationType } from "@prisma/client";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { upsertVendorTrustScore } from "@/lib/trust-score";
+import { createNotification } from "@/lib/notifications";
 
 type ActionResult = { success: true; message: string } | { success: false; error: string };
 
@@ -59,13 +60,12 @@ export async function rejectReviewAction(reviewId: string, reason?: string): Pro
     });
 
     if (review.user) {
-      await db.notification.create({
-        data: {
-          userId: review.user.id,
-          type: NotificationType.REVIEW,
-          title: "Your review was not published",
-          body: reason ?? "Your review did not meet our community guidelines and was removed.",
-        },
+      await createNotification({
+        userId: review.user.id,
+        type: NotificationType.REVIEW,
+        title: "Your review was not published",
+        body: reason ?? "Your review did not meet our community guidelines and was removed.",
+        url: "/customer/reviews",
       });
     }
 
@@ -107,13 +107,12 @@ export async function deleteReviewAction(reviewId: string): Promise<ActionResult
     await db.review.delete({ where: { id: reviewId } });
 
     if (review.user) {
-      await db.notification.create({
-        data: {
-          userId: review.user.id,
-          type: NotificationType.REVIEW,
-          title: "Your review was removed",
-          body: "Your review was removed by our moderation team for violating community guidelines.",
-        },
+      await createNotification({
+        userId: review.user.id,
+        type: NotificationType.REVIEW,
+        title: "Your review was removed",
+        body: "Your review was removed by our moderation team for violating community guidelines.",
+        url: "/customer/reviews",
       });
     }
 

@@ -70,7 +70,7 @@ export default async function VendorOrdersPage({ searchParams }: { searchParams:
           ? <EmptyState icon="📦" title="No orders yet" description="Orders from customers will appear here once your products go live." />
           : <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/50"><tr>
-                {["Order #","Customer","Product","Amount","Status","Date"].map((h) =>
+                {["Order #","Customer","Product","Amount","Status","Date",""].map((h) =>
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-zinc-50">
@@ -82,6 +82,9 @@ export default async function VendorOrdersPage({ searchParams }: { searchParams:
                     <td className="px-4 py-3 text-sm font-medium">{formatCurrency(Number(item.lineTotal))}</td>
                     <td className="px-4 py-3"><Badge tone={TONE[item.order.status]??'muted'}>{item.order.status}</Badge></td>
                     <td className="px-4 py-3 text-xs text-zinc-400">{new Date(item.order.createdAt).toLocaleDateString("en-PK",{day:"numeric",month:"short"})}</td>
+                    <td className="px-4 py-3">
+                      <a href={`/vendor/orders/${item.orderId}`} className="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline">View →</a>
+                    </td>
                   </tr>
                 ))}
               </tbody>

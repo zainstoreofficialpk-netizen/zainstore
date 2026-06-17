@@ -23,7 +23,7 @@ export function AnnouncementBar({ message, id = "v1" }: Props) {
   }
 
   return (
-    <div className="bg-brand-500 text-white text-center text-xs py-2.5 px-10 relative">
+    <div className="bg-brand-500 text-white text-center text-xs py-2.5 px-4 relative w-full overflow-hidden">
       <div className="flex items-center justify-center gap-2">
         <Truck className="h-3.5 w-3.5 shrink-0" />
         <span className="font-medium">{message}</span>

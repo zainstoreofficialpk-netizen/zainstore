@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Check, Store } from "lucide-react";
+import { useState, useRef } from "react";
+import { Check, Store, Upload, X, Loader2, CreditCard, Building2 } from "lucide-react";
 
 import { registerVendor } from "@/lib/auth/actions";
 
@@ -27,9 +27,13 @@ type FormData = {
   accountTitle: string;
   accountNumber: string;
   iban: string;
+  // Step 5 – Documents
+  cnicFront: string;
+  cnicBack: string;
+  bankCheque: string;
 };
 
-const STEPS = ["Account", "Store", "Details", "Bank & Submit"];
+const STEPS = ["Account", "Store", "Details", "Bank", "Documents"];
 
 function slugify(text: string) {
   return text
@@ -38,6 +42,111 @@ function slugify(text: string) {
     .replace(/[\s_]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+// ── Single image upload widget ────────────────────────────────────────────────
+
+function DocUpload({
+  label,
+  hint,
+  value,
+  onChange,
+  required,
+  icon: Icon,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (url: string) => void;
+  required?: boolean;
+  icon: React.ElementType;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { setErr("File must be under 8 MB."); return; }
+    setErr("");
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/auth/upload-doc", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) { setErr(json.error ?? "Upload failed."); }
+      else { onChange(json.url); }
+    } catch {
+      setErr("Network error. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <p className="mb-2 text-xs text-zinc-400">{hint}</p>
+
+      {value ? (
+        <div className="relative overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt={label} className="h-40 w-full object-cover" />
+          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/40 to-transparent p-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-xs font-medium text-white">Uploaded</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => { onChange(""); if (inputRef.current) inputRef.current.value = ""; }}
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 p-6 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60"
+        >
+          {uploading ? (
+            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100">
+              <Icon className="h-6 w-6 text-zinc-400" />
+            </div>
+          )}
+          <div className="text-center">
+            <p className="text-sm font-medium text-zinc-700">
+              {uploading ? "Uploading…" : "Click to upload"}
+            </p>
+            <p className="mt-0.5 text-xs text-zinc-400">JPG, PNG or WEBP · Max 8 MB</p>
+          </div>
+        </button>
+      )}
+
+      {err && <p className="mt-1.5 text-xs text-rose-600">{err}</p>}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+      />
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function VendorRegisterPage() {
   const router = useRouter();
@@ -52,6 +161,7 @@ export default function VendorRegisterPage() {
     storeName: "", storeSlug: "", storeDescription: "",
     storeAddress: "", storePhone: "", storeEmail: "",
     bankName: "", accountTitle: "", accountNumber: "", iban: "",
+    cnicFront: "", cnicBack: "", bankCheque: "",
   });
 
   function set(field: keyof FormData) {
@@ -59,13 +169,16 @@ export default function VendorRegisterPage() {
       const value = e.target.value;
       setForm((f) => {
         const updated = { ...f, [field]: value };
-        // Auto-generate slug from store name unless user has manually edited it
         if (field === "storeName" && !slugEdited) {
           updated.storeSlug = slugify(value);
         }
         return updated;
       });
     };
+  }
+
+  function setDoc(field: "cnicFront" | "cnicBack" | "bankCheque") {
+    return (url: string) => setForm((f) => ({ ...f, [field]: url }));
   }
 
   function validateStep(): string | null {
@@ -82,6 +195,21 @@ export default function VendorRegisterPage() {
         return "Store URL must contain only lowercase letters, numbers, and hyphens.";
       }
       if (form.storeDescription.length < 10) return "Store description must be at least 10 characters.";
+    }
+    if (step === 2) {
+      if (!form.storeAddress.trim()) return "Store address is required.";
+      if (!form.storePhone.trim() || form.storePhone.length < 10) return "Enter a valid store phone number.";
+      if (form.storeEmail && !form.storeEmail.includes("@")) return "Enter a valid store email address.";
+    }
+    if (step === 3) {
+      if (!form.bankName.trim()) return "Bank name is required.";
+      if (!form.accountTitle.trim()) return "Account title is required.";
+      if (!form.accountNumber.trim()) return "Account number is required.";
+    }
+    if (step === 4) {
+      if (!form.cnicFront) return "Please upload your CNIC front side.";
+      if (!form.cnicBack) return "Please upload your CNIC back side.";
+      if (!form.bankCheque) return "Please upload a cancelled cheque or bank account screenshot.";
     }
     return null;
   }
@@ -100,16 +228,21 @@ export default function VendorRegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const err = validateStep();
+    if (err) { setError(err); return; }
     setError("");
     setLoading(true);
 
     const result = await registerVendor({
       name: form.name, email: form.email, password: form.password, phone: form.phone,
       storeName: form.storeName, storeSlug: form.storeSlug, storeDescription: form.storeDescription,
-      storeAddress: form.storeAddress || undefined, storePhone: form.storePhone || undefined,
+      storeAddress: form.storeAddress, storePhone: form.storePhone,
       storeEmail: form.storeEmail || undefined,
-      bankName: form.bankName || undefined, accountTitle: form.accountTitle || undefined,
-      accountNumber: form.accountNumber || undefined, iban: form.iban || undefined,
+      bankName: form.bankName, accountTitle: form.accountTitle,
+      accountNumber: form.accountNumber, iban: form.iban || undefined,
+      cnicFront: form.cnicFront || undefined,
+      cnicBack: form.cnicBack || undefined,
+      bankCheque: form.bankCheque || undefined,
     });
 
     setLoading(false);
@@ -122,15 +255,16 @@ export default function VendorRegisterPage() {
     }
   }
 
+  const isLastStep = step === STEPS.length - 1;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12">
       <div className="w-full max-w-lg">
 
         {/* Header */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-500 text-white">
-            <Store size={24} aria-hidden />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-14 w-14 object-contain" />
           <div>
             <h1 className="text-2xl font-bold text-zinc-950">Apply as a Vendor</h1>
             <p className="mt-1 text-sm text-zinc-500">Start selling on ZainStore.pk</p>
@@ -169,7 +303,10 @@ export default function VendorRegisterPage() {
               <p className="text-xs text-zinc-400">Redirecting to sign in…</p>
             </div>
           ) : (
-            <form onSubmit={step === STEPS.length - 1 ? handleSubmit : (e) => { e.preventDefault(); next(); }} className="space-y-4">
+            <form
+              onSubmit={isLastStep ? handleSubmit : (e) => { e.preventDefault(); next(); }}
+              className="space-y-4"
+            >
 
               {/* Step 0 – Account */}
               {step === 0 && (
@@ -221,11 +358,10 @@ export default function VendorRegisterPage() {
               {/* Step 2 – Store Details */}
               {step === 2 && (
                 <>
-                  <p className="text-sm text-zinc-500">All fields on this step are optional — you can update them from your store settings later.</p>
-                  <Field label="Store Address" id="storeAddress" type="text" placeholder="Shop 5, Main Market, Karachi" value={form.storeAddress} onChange={set("storeAddress")} />
+                  <Field label="Store Address *" id="storeAddress" type="text" placeholder="Shop 5, Main Market, Karachi" value={form.storeAddress} onChange={set("storeAddress")} />
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Store Phone" id="storePhone" type="tel" placeholder="+92 300 0000000" value={form.storePhone} onChange={set("storePhone")} />
-                    <Field label="Store Email" id="storeEmail" type="email" placeholder="store@example.com" value={form.storeEmail} onChange={set("storeEmail")} />
+                    <Field label="Store Phone *" id="storePhone" type="tel" placeholder="+92 300 0000000" value={form.storePhone} onChange={set("storePhone")} />
+                    <Field label="Store Email" id="storeEmail" type="email" placeholder="store@example.com (optional)" value={form.storeEmail} onChange={set("storeEmail")} />
                   </div>
                 </>
               )}
@@ -233,17 +369,52 @@ export default function VendorRegisterPage() {
               {/* Step 3 – Bank Details */}
               {step === 3 && (
                 <>
-                  <p className="text-sm text-zinc-500">Bank details are used for withdrawal payouts. You can update these later from your vendor settings.</p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Bank Name" id="bankName" type="text" placeholder="Meezan Bank" value={form.bankName} onChange={set("bankName")} />
-                    <Field label="Account Title" id="accountTitle" type="text" placeholder="Ayesha Khan" value={form.accountTitle} onChange={set("accountTitle")} />
+                    <Field label="Bank Name *" id="bankName" type="text" placeholder="Meezan Bank" value={form.bankName} onChange={set("bankName")} />
+                    <Field label="Account Title *" id="accountTitle" type="text" placeholder="Ayesha Khan" value={form.accountTitle} onChange={set("accountTitle")} />
                   </div>
-                  <Field label="Account Number" id="accountNumber" type="text" placeholder="00011223344" value={form.accountNumber} onChange={set("accountNumber")} />
+                  <Field label="Account Number *" id="accountNumber" type="text" placeholder="00011223344" value={form.accountNumber} onChange={set("accountNumber")} />
                   <Field label="IBAN (optional)" id="iban" type="text" placeholder="PK00MEZN00011223344" value={form.iban} onChange={set("iban")} />
+                </>
+              )}
+
+              {/* Step 4 – Documents */}
+              {step === 4 && (
+                <>
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                    <p className="text-xs leading-5 text-blue-800">
+                      <strong>Verification Required:</strong> Upload clear photos of your CNIC (front &amp; back) and a cancelled cheque or bank account screenshot. These documents are used to verify your identity and bank account for payouts. They are kept private and only visible to ZainStore.pk admins.
+                    </p>
+                  </div>
+
+                  <DocUpload
+                    label="CNIC Front"
+                    hint="Upload a clear photo of the front of your National Identity Card (CNIC)."
+                    value={form.cnicFront}
+                    onChange={setDoc("cnicFront")}
+                    required
+                    icon={CreditCard}
+                  />
+                  <DocUpload
+                    label="CNIC Back"
+                    hint="Upload a clear photo of the back of your National Identity Card (CNIC)."
+                    value={form.cnicBack}
+                    onChange={setDoc("cnicBack")}
+                    required
+                    icon={CreditCard}
+                  />
+                  <DocUpload
+                    label="Cancelled Cheque / Bank Account Screenshot"
+                    hint="Upload a cancelled cheque leaf or a screenshot of your bank account showing your account number and name."
+                    value={form.bankCheque}
+                    onChange={setDoc("bankCheque")}
+                    required
+                    icon={Building2}
+                  />
 
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
                     <p className="text-xs leading-5 text-amber-800">
-                      <strong>Note:</strong> Your vendor application will be reviewed by the ZainStore.pk team. You will receive an email once your account is approved. Approved vendors can immediately list products and start selling.
+                      <strong>Almost done!</strong> After submitting, your application will be reviewed by our team within 24–48 hours. You will receive an email notification once approved.
                     </p>
                   </div>
                 </>
@@ -267,7 +438,7 @@ export default function VendorRegisterPage() {
                   disabled={loading}
                   className="flex-1 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
                 >
-                  {step === STEPS.length - 1 ? (loading ? "Submitting…" : "Submit Application") : "Next →"}
+                  {isLastStep ? (loading ? "Submitting…" : "Submit Application") : "Next →"}
                 </button>
               </div>
             </form>

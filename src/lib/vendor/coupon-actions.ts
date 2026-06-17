@@ -62,8 +62,8 @@ export async function createCouponAction(raw: CouponFormData): Promise<ActionRes
         active,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        usageLimit: usageLimit && usageLimit !== "" ? Number(usageLimit) : null,
-        minOrderAmount: minOrderAmount && minOrderAmount !== "" ? Number(minOrderAmount) : null,
+        usageLimit: usageLimit ? Number(usageLimit) : null,
+        minOrderAmount: minOrderAmount ? Number(minOrderAmount) : null,
       },
     });
 
@@ -103,8 +103,8 @@ export async function updateCouponAction(couponId: string, raw: CouponFormData):
         active,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        usageLimit: usageLimit && usageLimit !== "" ? Number(usageLimit) : null,
-        minOrderAmount: minOrderAmount && minOrderAmount !== "" ? Number(minOrderAmount) : null,
+        usageLimit: usageLimit ? Number(usageLimit) : null,
+        minOrderAmount: minOrderAmount ? Number(minOrderAmount) : null,
       },
     });
 

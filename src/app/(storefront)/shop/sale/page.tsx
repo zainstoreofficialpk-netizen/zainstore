@@ -8,6 +8,21 @@ import type { Prisma } from "@prisma/client";
 export const metadata: Metadata = {
   title: "Mega Sale — Up to 70% Off | ZainStore.pk",
   description: "Shop the biggest sale on ZainStore.pk. Up to 70% off on electronics, fashion, home & more. Limited time deals across all categories.",
+  alternates: { canonical: "https://zainstore.pk/shop/sale" },
+  openGraph: {
+    title: "Mega Sale — Up to 70% Off | ZainStore.pk",
+    description: "Shop the biggest sale on ZainStore.pk. Up to 70% off on electronics, fashion, home & more.",
+    url: "https://zainstore.pk/shop/sale",
+    siteName: "ZainStore.pk",
+    type: "website",
+    images: [{ url: "/og-default.jpg", width: 1200, height: 630, alt: "ZainStore.pk Mega Sale" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mega Sale — Up to 70% Off | ZainStore.pk",
+    description: "Shop the biggest sale on ZainStore.pk. Up to 70% off on electronics, fashion, home & more.",
+    images: ["/og-default.jpg"],
+  },
 };
 
 const PROMO_CHIPS = [

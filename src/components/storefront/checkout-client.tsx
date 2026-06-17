@@ -32,12 +32,10 @@ import {
   PROVINCES,
   CITIES_BY_PROVINCE,
   ALL_CITIES,
-  getShippingRates,
   getProvinceForCity,
-  getDeliveryDate,
-  type ShippingRate,
 } from "@/lib/checkout/pakistan-data";
 import { validateCoupon, placeOrder } from "@/lib/checkout/actions";
+import { calculateShipping, type ShippingSettings } from "@/lib/shipping";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -144,7 +142,7 @@ function PaymentLogo({ id }: { id: string }) {
 
 // ─── Main component ───────────────────────────────────────────
 
-export function CheckoutClient({ user }: { user: User }) {
+export function CheckoutClient({ user, shippingSettings }: { user: User; shippingSettings: ShippingSettings }) {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -182,10 +180,14 @@ export function CheckoutClient({ user }: { user: User }) {
     code?: string;
     description?: string;
     error?: string;
+    scope?: "platform" | "vendor";
+    vendorId?: string | null;
+    storeName?: string | null;
+    eligibleSubtotal?: number;
+    discountAmount?: number;
   } | null>(null);
 
-  // Shipping
-  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  // Shipping (weight-based — no city selection needed)
 
   // Submit
   const [submitting, setSubmitting] = useState(false);
@@ -234,34 +236,23 @@ export function CheckoutClient({ user }: { user: User }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  // ── Update shipping when city/province changes ───────────────
-
-  useEffect(() => {
-    if (form.city && form.province) {
-      const rates = getShippingRates(form.city, form.province);
-      setShippingRates(rates);
-      // Keep current method if still available, else default to standard
-      const stillValid = rates.some((r) => r.id === form.shippingMethod);
-      if (!stillValid) setForm((p) => ({ ...p, shippingMethod: "standard" }));
-    }
-  }, [form.city, form.province, form.shippingMethod]);
-
   // ── Derived values ────────────────────────────────────────────
 
   const subtotal = mounted ? cartSubtotal(items) : 0;
 
-  const currentRate = shippingRates.find((r) => r.id === form.shippingMethod);
+  // Weight-based shipping: sum all item weights × qty
+  const totalWeightGrams = mounted
+    ? items.reduce((sum, item) => sum + (item.weightGrams ?? 500) * item.quantity, 0)
+    : 0;
+
+  const { price: baseShipping, tier: shippingTier } = calculateShipping(totalWeightGrams, shippingSettings);
   const shippingCost =
     couponResult?.valid && couponResult.type === "FREE_SHIPPING"
       ? 0
-      : currentRate?.price ?? 0;
+      : baseShipping;
 
-  let discountAmount = 0;
-  if (couponResult?.valid && couponResult.type === "PERCENTAGE") {
-    discountAmount = Math.round((subtotal * (couponResult.value ?? 0)) / 100);
-  } else if (couponResult?.valid && couponResult.type === "FIXED") {
-    discountAmount = Math.min(couponResult.value ?? 0, subtotal);
-  }
+  // Use server-computed discountAmount (already scoped to eligible vendor items)
+  const discountAmount = couponResult?.valid ? (couponResult.discountAmount ?? 0) : 0;
 
   const grandTotal = subtotal + shippingCost - discountAmount;
 
@@ -345,7 +336,13 @@ export function CheckoutClient({ user }: { user: User }) {
   async function handleCoupon() {
     if (!couponInput.trim()) return;
     setCouponLoading(true);
-    const result = await validateCoupon(couponInput, subtotal);
+    const cartLines = items.map((i) => ({
+      vendorId: i.vendorId ?? null,
+      price: i.price,
+      salePrice: i.salePrice,
+      quantity: i.quantity,
+    }));
+    const result = await validateCoupon(couponInput, subtotal, cartLines);
     setCouponResult(result.valid ? result : { valid: false, error: result.error });
     setCouponLoading(false);
   }
@@ -660,67 +657,33 @@ export function CheckoutClient({ user }: { user: User }) {
                 </div>
               </CheckoutSection>
 
-              {/* ── Section: Shipping Method ─────────────── */}
-              <CheckoutSection icon={Truck} title="Shipping Method" step={3}>
-                {!form.city ? (
-                  <p className="text-sm text-zinc-400 italic">Enter your city to see shipping options</p>
-                ) : (
+              {/* ── Section: Shipping ─────────────── */}
+              <CheckoutSection icon={Truck} title="Delivery" step={3}>
                   <div className="space-y-2">
-                    {(shippingRates.length > 0
-                      ? shippingRates
-                      : [{ id: "standard", label: "Standard Delivery", description: "3–5 business days", price: 200, days: "3–5" }]
-                    ).map((rate) => {
-                      const selected = form.shippingMethod === rate.id;
-                      const delivery = getDeliveryDate(rate.days);
-                      return (
-                        <label
-                          key={rate.id}
-                          className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-150 ${
-                            selected
-                              ? "border-brand-500 bg-brand-50/50"
-                              : "border-zinc-200 hover:border-zinc-300 bg-white"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="shippingMethod"
-                            value={rate.id}
-                            checked={selected}
-                            onChange={() => setField("shippingMethod", rate.id)}
-                            className="sr-only"
-                          />
-                          <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            selected ? "border-brand-500" : "border-zinc-300"
-                          }`}>
-                            {selected && <div className="h-2.5 w-2.5 rounded-full bg-brand-500" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-zinc-800">{rate.label}</span>
-                              {rate.id === "express" && (
-                                <span className="text-[9px] font-black bg-accent-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wide">Fast</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-zinc-500 mt-0.5">{rate.description}</p>
-                            {delivery && (
-                              <p className="text-xs text-green-600 font-medium mt-0.5 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Estimated: {delivery}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-sm font-black text-zinc-900 shrink-0">
-                            {rate.price === 0 ? (
-                              <span className="text-green-600">FREE</span>
-                            ) : (
-                              formatCurrency(rate.price)
-                            )}
-                          </div>
-                        </label>
-                      );
-                    })}
+                    <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-brand-500 bg-brand-50/50">
+                      <div className="h-5 w-5 rounded-full border-2 border-brand-500 flex items-center justify-center shrink-0">
+                        <div className="h-2.5 w-2.5 rounded-full bg-brand-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-zinc-800">PostEx Cash on Delivery</span>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          {shippingTier ? shippingTier.label : "Standard delivery"} · Estimated 2–5 business days
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-0.5">
+                          Order weight: ~{totalWeightGrams >= 1000 ? `${(totalWeightGrams / 1000).toFixed(1)}kg` : `${totalWeightGrams}g`}
+                        </p>
+                      </div>
+                      <div className="text-sm font-black text-zinc-900 shrink-0">
+                        {shippingCost === 0 ? (
+                          <span className="text-green-600">FREE</span>
+                        ) : (
+                          formatCurrency(shippingCost)
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
               </CheckoutSection>
 
               {/* ── Section: Payment Method ──────────────── */}
@@ -769,11 +732,11 @@ export function CheckoutClient({ user }: { user: User }) {
                   <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm">
                     <p className="font-semibold text-blue-800 mb-2">Bank Transfer Details</p>
                     <div className="space-y-1 text-blue-700 font-mono text-xs">
-                      <p>Bank: <span className="font-semibold">Meezan Bank</span></p>
-                      <p>Account: <span className="font-semibold">0123-4567890-1</span></p>
-                      <p>Title: <span className="font-semibold">ZainStore.pk (Pvt) Ltd</span></p>
+                      <p>Bank: <span className="font-semibold">MCB Bank</span></p>
+                      <p>IBAN: <span className="font-semibold">PK40MUCB1099341411003217</span></p>
+                      <p>Title: <span className="font-semibold">ZainStore.pk</span></p>
                     </div>
-                    <p className="text-xs text-blue-600 mt-2">Send screenshot to WhatsApp: <strong>+92 300 1234567</strong></p>
+                    <p className="text-xs text-blue-600 mt-2">Send screenshot to WhatsApp: <strong>0347-891-3290</strong></p>
                   </div>
                 )}
 
@@ -782,7 +745,9 @@ export function CheckoutClient({ user }: { user: User }) {
                     <p className="font-semibold text-green-800 mb-1">
                       {form.paymentMethod === "easypaisa" ? "EasyPaisa" : "JazzCash"} Account
                     </p>
-                    <p className="text-green-700 font-mono text-xs font-semibold">+92 300 1234567</p>
+                    <p className="text-green-700 font-mono text-xs font-semibold">
+                      {form.paymentMethod === "easypaisa" ? "03478913290" : "0347-891-3290"}
+                    </p>
                     <p className="text-xs text-green-600 mt-1.5">
                       Send payment to the above number and share the transaction ID via WhatsApp.
                     </p>
@@ -819,8 +784,7 @@ export function CheckoutClient({ user }: { user: User }) {
                   couponLoading={couponLoading}
                   onApplyCoupon={handleCoupon}
                   onRemoveCoupon={() => { setCouponResult(null); setCouponInput(""); }}
-                  shippingMethod={form.shippingMethod}
-                  shippingRates={shippingRates}
+                  shippingTierLabel={shippingTier?.label ?? "Standard delivery"}
                   city={form.city}
                   submitting={submitting}
                   grandTotalFormatted={mounted ? formatCurrency(grandTotal) : "—"}
@@ -932,7 +896,7 @@ function OrderSummaryPanel({
   couponLoading,
   onApplyCoupon,
   onRemoveCoupon,
-  shippingRates,
+  shippingTierLabel,
   city,
   submitting,
   grandTotalFormatted,
@@ -944,12 +908,11 @@ function OrderSummaryPanel({
   grandTotal: number;
   couponInput: string;
   setCouponInput: (v: string) => void;
-  couponResult: { valid: boolean; type?: string; value?: number; code?: string; description?: string; error?: string } | null;
+  couponResult: { valid: boolean; type?: string; value?: number; code?: string; description?: string; error?: string; scope?: "platform" | "vendor"; vendorId?: string | null; storeName?: string | null; eligibleSubtotal?: number; discountAmount?: number } | null;
   couponLoading: boolean;
   onApplyCoupon: () => void;
   onRemoveCoupon: () => void;
-  shippingMethod: string;
-  shippingRates: ShippingRate[];
+  shippingTierLabel: string;
   city: string;
   submitting: boolean;
   grandTotalFormatted: string;
@@ -1008,12 +971,22 @@ function OrderSummaryPanel({
         {/* Coupon */}
         <div className="px-4 pb-4">
           {couponResult?.valid ? (
-            <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl text-xs">
-              <Tag className="h-3.5 w-3.5 text-green-600 shrink-0" />
-              <span className="font-semibold text-green-700 flex-1">{couponResult.code} — {couponResult.description}</span>
-              <button type="button" onClick={onRemoveCoupon} className="text-green-600 hover:text-green-800">
-                <X className="h-3.5 w-3.5" />
-              </button>
+            <div className="p-2.5 bg-green-50 border border-green-200 rounded-xl text-xs space-y-1">
+              <div className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                <span className="font-semibold text-green-700 flex-1">{couponResult.code} — {couponResult.description}</span>
+                <button type="button" onClick={onRemoveCoupon} className="text-green-600 hover:text-green-800">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {couponResult.scope === "vendor" && couponResult.storeName && (
+                <p className="text-[10px] text-green-600 pl-5">
+                  Applies to <strong>{couponResult.storeName}</strong> products only
+                </p>
+              )}
+              {couponResult.scope === "platform" && (
+                <p className="text-[10px] text-green-600 pl-5">Platform-wide coupon — applies to all items</p>
+              )}
             </div>
           ) : (
             <div className="flex gap-2">
@@ -1153,6 +1126,75 @@ function PlaceOrderButton({
   );
 }
 
+// ─── Confetti particle ────────────────────────────────────────
+
+const CONFETTI_COLORS = [
+  "#faa42d", "#f1672e", "#6366f1", "#ec4899",
+  "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6",
+  "#ef4444", "#14b8a6",
+];
+
+function ConfettiBurst() {
+  const pieces = Array.from({ length: 30 }, (_, i) => {
+    const angle   = (i / 30) * 360;
+    const dist    = 60 + Math.random() * 80;
+    const delay   = Math.random() * 0.3;
+    const size    = 5 + Math.random() * 6;
+    const color   = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    const isRect  = i % 3 !== 0;
+    const tx      = Math.cos((angle * Math.PI) / 180) * dist;
+    const ty      = Math.sin((angle * Math.PI) / 180) * dist;
+    const rot     = Math.random() * 720 - 360;
+
+    return (
+      <span
+        key={i}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          width:  isRect ? size : size * 0.8,
+          height: isRect ? size * 0.5 : size * 0.8,
+          borderRadius: isRect ? "2px" : "50%",
+          background: color,
+          transform: "translate(-50%,-50%)",
+          animation: `confettiFly 0.9s ease-out ${delay}s both`,
+          // pass tx/ty/rot via CSS custom properties
+          ["--tx" as string]: `${tx}px`,
+          ["--ty" as string]: `${ty}px`,
+          ["--rot" as string]: `${rot}deg`,
+          opacity: 0,
+        }}
+      />
+    );
+  });
+
+  return (
+    <>
+      <style>{`
+        @keyframes confettiFly {
+          0%   { transform: translate(-50%,-50%) scale(0) rotate(0deg); opacity: 1; }
+          60%  { opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1) rotate(var(--rot)); opacity: 0; }
+        }
+        @keyframes popIn {
+          0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+          60%  { transform: scale(1.25) rotate(6deg); }
+          80%  { transform: scale(0.92) rotate(-3deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes ringPulse {
+          0%   { transform: scale(0.6); opacity: 0.9; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+      `}</style>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }}>
+        {pieces}
+      </div>
+    </>
+  );
+}
+
 // ─── Order success screen ─────────────────────────────────────
 
 function OrderSuccess({
@@ -1166,14 +1208,40 @@ function OrderSuccess({
   paymentMethod: string;
   city: string;
 }) {
-  void orderId; // reserved for order detail link
+  void orderId;
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center px-4 py-12">
       <div className="bg-white rounded-3xl border border-zinc-100 shadow-xl max-w-md w-full p-8 text-center space-y-5">
-        {/* Checkmark animation */}
-        <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="h-10 w-10 text-green-500" />
+
+        {/* Animated checkmark + confetti */}
+        <div className="relative flex items-center justify-center mx-auto" style={{ width: 96, height: 96 }}>
+          {/* Pulse rings */}
+          <span style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: "3px solid #22c55e",
+            animation: "ringPulse 1s ease-out 0.1s both",
+          }} />
+          <span style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: "3px solid #86efac",
+            animation: "ringPulse 1s ease-out 0.35s both",
+          }} />
+
+          {/* Green circle + check */}
+          <div style={{
+            position: "relative", zIndex: 1,
+            width: 80, height: 80, borderRadius: "50%",
+            background: "linear-gradient(135deg,#bbf7d0,#86efac)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 0 6px #dcfce7",
+            animation: "popIn 0.6s cubic-bezier(.34,1.56,.64,1) 0.05s both",
+          }}>
+            <CheckCircle2 className="h-10 w-10 text-green-600" />
+          </div>
+
+          {/* Confetti burst */}
+          <ConfettiBurst />
         </div>
 
         <div>
@@ -1195,7 +1263,7 @@ function OrderSuccess({
           <div className="flex justify-between">
             <span className="text-zinc-500">Payment</span>
             <span className="font-semibold text-zinc-800 capitalize">
-              {paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod}
+              {paymentMethod === "cod" ? "Cash On Delivery" : paymentMethod}
             </span>
           </div>
         </div>
@@ -1208,7 +1276,7 @@ function OrderSuccess({
         )}
 
         <p className="text-xs text-zinc-400">
-          We will confirm your order via phone call. Save our number: <strong>+92 300 1234567</strong>
+          We will confirm your order via phone call. Save our number: <strong>0347-891-3290</strong>
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">

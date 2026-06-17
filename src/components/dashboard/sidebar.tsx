@@ -26,9 +26,8 @@ export function Sidebar({ title, portal }: SidebarProps) {
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-zinc-200 bg-white lg:block">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-zinc-100 px-4">
-        <span className="grid size-9 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-sm">
-          <Store size={18} aria-hidden />
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-9 w-9 object-contain shrink-0" />
         <div>
           <p className="text-sm font-bold text-zinc-950">ZainStore.pk</p>
           <p className="text-xs text-zinc-400">{title}</p>

@@ -46,11 +46,15 @@ export function MobileDrawer({ isOpen, onClose, categories, user }: Props) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 bg-brand-500">
-          <div>
-            <p className="text-white font-black text-base tracking-tight">ZainStore<span className="text-white/70">.pk</span></p>
-            <p className="text-white/75 text-xs mt-0.5">
-              {user ? `Hi, ${user.name?.split(" ")[0] ?? "there"}!` : "Welcome, Guest"}
-            </p>
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-8 w-8 object-contain brightness-0 invert" />
+            <div>
+              <p className="text-white font-black text-base tracking-tight leading-none">ZainStore<span className="text-white/70">.pk</span></p>
+              <p className="text-white/75 text-xs mt-0.5">
+                {user ? `Hi, ${user.name?.split(" ")[0] ?? "there"}!` : "Welcome, Guest"}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <X className="h-5 w-5" />
@@ -73,6 +77,13 @@ export function MobileDrawer({ isOpen, onClose, categories, user }: Props) {
               </Link>
             ))}
           </div>
+
+          {/* Browse all products */}
+          <Link href="/shop/browse" onClick={onClose}
+            className="flex items-center justify-between mx-4 mt-3 mb-1 px-4 py-3 bg-brand-50 rounded-xl text-sm font-bold text-brand-700 hover:bg-brand-100 transition-colors">
+            <span>Browse All Products</span>
+            <ChevronRight className="h-4 w-4" />
+          </Link>
 
           {/* Categories */}
           <div className="px-4 pt-4 pb-1">

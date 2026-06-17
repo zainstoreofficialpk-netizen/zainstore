@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Bell, Check, Package, Star, RefreshCcw, ShieldCheck, CreditCard, Truck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Bell, Check, Package, Star, RefreshCcw, ShieldCheck, CreditCard } from "lucide-react";
 
 import {
   markCustomerNotificationRead,
@@ -20,7 +21,7 @@ type Notification = {
   createdAt: Date;
 };
 
-const TYPE_ICON: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const TYPE_ICON: Record<string, LucideIcon> = {
   ORDER: Package,
   REVIEW: Star,
   REFUND: RefreshCcw,

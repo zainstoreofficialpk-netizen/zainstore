@@ -21,9 +21,10 @@ export type ShippingSettings = {
 
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   tiers: [
-    { id: "t1", label: "500g – 1000g",  minWeight: 500,  maxWeight: 1000, price: 400 },
-    { id: "t2", label: "1001g – 1500g", minWeight: 1001, maxWeight: 1500, price: 800 },
-    { id: "t3", label: "1501g – 2000g", minWeight: 1501, maxWeight: 2000, price: 999 },
+    { id: "t1", label: "100g – 500g",   minWeight: 100,  maxWeight: 500,  price: 230 },
+    { id: "t2", label: "500g – 1000g",  minWeight: 501,  maxWeight: 1000, price: 320 },
+    { id: "t3", label: "1000g – 1500g", minWeight: 1001, maxWeight: 1500, price: 420 },
+    { id: "t4", label: "1500g – 2000g", minWeight: 1501, maxWeight: 2000, price: 550 },
   ],
   currency: "PKR",
   region: "Pakistan",
