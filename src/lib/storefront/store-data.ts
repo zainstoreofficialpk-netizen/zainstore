@@ -113,11 +113,6 @@ export async function getAllStores(opts: GetStoresOptions = {}) {
         vendor: {
           include: {
             trustScore: true,
-            orders: {
-              where: { order: { status: "DELIVERED" } },
-              select: { id: true },
-              take: 999,
-            },
           },
         },
       },
@@ -140,7 +135,7 @@ export async function getAllStores(opts: GetStoresOptions = {}) {
     avgRating: s.vendor.trustScore?.avgRating ?? 0,
     totalReviews: s.vendor.trustScore?.totalReviews ?? 0,
     overallScore: s.vendor.trustScore?.overallScore ?? 0,
-    completedOrders: s.vendor.orders.length,
+    completedOrders: 0,
     createdAt: s.createdAt,
   }));
 

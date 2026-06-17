@@ -6,7 +6,6 @@ const BASE = "https://zainstore.pk";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1.0 },
     { url: `${BASE}/shop`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
@@ -20,41 +19,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/shop/privacy`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
   ];
 
-  // Products
-  const products = await db.product.findMany({
-    where: { status: "ACTIVE" },
-    select: { slug: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-  });
-  const productPages: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${BASE}/shop/product/${p.slug}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  try {
+    const [products, categories, stores] = await Promise.all([
+      db.product.findMany({
+        where: { status: "ACTIVE" },
+        select: { slug: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      db.category.findMany({
+        select: { slug: true, updatedAt: true },
+      }),
+      db.store.findMany({
+        where: { vacationMode: false, vendor: { status: "ACTIVE" } },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
 
-  // Categories
-  const categories = await db.category.findMany({
-    select: { slug: true, updatedAt: true },
-  });
-  const categoryPages: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: `${BASE}/shop/category/${c.slug}`,
-    lastModified: c.updatedAt,
-    changeFrequency: "daily",
-    priority: 0.7,
-  }));
+    const productPages: MetadataRoute.Sitemap = products.map((p) => ({
+      url: `${BASE}/shop/product/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
 
-  // Stores
-  const stores = await db.store.findMany({
-    where: { vacationMode: false, vendor: { status: "ACTIVE" } },
-    select: { slug: true, updatedAt: true },
-  });
-  const storePages: MetadataRoute.Sitemap = stores.map((s) => ({
-    url: `${BASE}/shop/store/${s.slug}`,
-    lastModified: s.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
+    const categoryPages: MetadataRoute.Sitemap = categories.map((c) => ({
+      url: `${BASE}/shop/category/${c.slug}`,
+      lastModified: c.updatedAt,
+      changeFrequency: "daily",
+      priority: 0.7,
+    }));
 
-  return [...staticPages, ...productPages, ...categoryPages, ...storePages];
+    const storePages: MetadataRoute.Sitemap = stores.map((s) => ({
+      url: `${BASE}/shop/store/${s.slug}`,
+      lastModified: s.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }));
+
+    return [...staticPages, ...productPages, ...categoryPages, ...storePages];
+  } catch {
+    return staticPages;
+  }
 }
