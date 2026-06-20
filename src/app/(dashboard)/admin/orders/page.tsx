@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/format";
 import { EARNINGS_HOLD_DAYS } from "@/lib/admin/withdrawal-data";
 import { OrderStatusUpdater } from "@/components/admin/order-status-updater";
 import { AdminOrderPostEx } from "@/components/admin/admin-order-postex";
-import { OrderSourceBadge, OrderSourceUpdater } from "@/components/admin/order-source-updater";
+import { OrderSourceBadge } from "@/components/admin/order-source-updater";
 
 const ORDER_TONE: Record<string, "success" | "warning" | "danger" | "accent" | "muted"> = {
   PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent",
@@ -171,11 +171,12 @@ export default async function AdminOrdersPage({
                         {order.items[0]?.vendor?.store?.name ?? "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <OrderSourceUpdater
-                          orderId={order.id}
-                          currentSource={order.orderSource}
-                          currentReference={order.sourceReference ?? null}
-                        />
+                        <div className="flex flex-col gap-0.5">
+                          <OrderSourceBadge source={order.orderSource} />
+                          {order.sourceReference && (
+                            <span className="font-mono text-[10px] text-zinc-400">#{order.sourceReference}</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
                         {formatCurrency(Number(order.grandTotal))}

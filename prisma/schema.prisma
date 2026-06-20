@@ -66,6 +66,7 @@ enum OrderSource {
   FACEBOOK
   WHATSAPP
   INSTAGRAM
+  GOOGLE
   OTHER
 }
 

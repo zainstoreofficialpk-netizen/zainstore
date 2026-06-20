@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { revalidatePath } from "next/cache";
 import { sendEmail, orderConfirmationEmailHtml, vendorNewOrderEmailHtml } from "@/lib/email";
+import { OrderSource } from "@prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -40,6 +41,9 @@ export type PlaceOrderInput = {
   paymentMethod: string;
   // Items
   items: CheckoutItem[];
+  // Traffic source (auto-detected from UTM params)
+  orderSource?: string;
+  sourceReference?: string | null;
 };
 
 export type PlaceOrderResult =
@@ -250,11 +254,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     // ── Create order ──────────────────────────────────────────
 
+    const resolvedSource = (input.orderSource as OrderSource | undefined) ?? OrderSource.DIRECT;
+
     const order = await db.order.create({
       data: {
         orderNumber,
         customerId,
         shippingAddressId: address.id,
+        orderSource: resolvedSource,
+        sourceReference: input.sourceReference ?? null,
         status: "PENDING",
         paymentStatus: input.paymentMethod === "cod" ? "PENDING" : "PENDING",
         subtotal: input.subtotal,

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { StorefrontHeader } from "@/components/storefront/storefront-header";
 import { StorefrontProviders } from "@/components/storefront/storefront-providers";
 import { VisitorTracker } from "@/components/shared/visitor-tracker";
+import { UtmTracker } from "@/components/shared/utm-tracker";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zainstore.pk"),
@@ -115,6 +116,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
     <VisitorTracker />
+    <UtmTracker />
     <div className="min-h-screen bg-zinc-50 flex flex-col overflow-x-hidden w-full">
       <StorefrontHeader
         categories={categories}

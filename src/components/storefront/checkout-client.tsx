@@ -35,6 +35,7 @@ import {
   getProvinceForCity,
 } from "@/lib/checkout/pakistan-data";
 import { validateCoupon, placeOrder } from "@/lib/checkout/actions";
+import { readStoredUtm } from "@/components/shared/utm-tracker";
 import { calculateShipping, type ShippingSettings } from "@/lib/shipping";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -358,6 +359,8 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
     setSubmitting(true);
     setSubmitError("");
 
+    const utm = readStoredUtm();
+
     const result = await placeOrder({
       email: form.email.trim(),
       phone: form.phone.trim(),
@@ -383,6 +386,8 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
         unitPrice: item.salePrice ?? item.price,
         imageUrl: item.imageUrl,
       })),
+      orderSource: utm?.source ?? "DIRECT",
+      sourceReference: utm?.reference ?? null,
     });
 
     setSubmitting(false);
