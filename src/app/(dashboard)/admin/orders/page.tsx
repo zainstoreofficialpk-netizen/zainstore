@@ -15,8 +15,16 @@ import { AdminOrderPostEx } from "@/components/admin/admin-order-postex";
 import { OrderSourceBadge } from "@/components/admin/order-source-updater";
 
 const ORDER_TONE: Record<string, "success" | "warning" | "danger" | "accent" | "muted"> = {
-  PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent",
+  PENDING: "warning", PROCESSING: "accent", READY_FOR_DISPATCH: "accent",
+  SHIPPED: "accent", OUT_FOR_DELIVERY: "accent",
   DELIVERED: "success", CANCELLED: "danger", REFUNDED: "muted",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pending", PROCESSING: "Processing",
+  READY_FOR_DISPATCH: "Ready", SHIPPED: "Shipped",
+  OUT_FOR_DELIVERY: "Out for Del.", DELIVERED: "Delivered",
+  CANCELLED: "Cancelled", REFUNDED: "Refunded",
 };
 const PAY_TONE: Record<string, "success" | "warning" | "danger" | "muted"> = {
   PAID: "success", PENDING: "warning", FAILED: "danger", REFUNDED: "muted", AUTHORIZED: "warning",
@@ -139,7 +147,10 @@ export default async function AdminOrdersPage({
                 <tr>
                   {["Order #", "Customer", "Vendor", "Source", "Total", "Payment", "Status", "PostEx AWB", "Delivered", "Actions"].map(
                     (h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+                      <th
+                        key={h}
+                        className={`px-4 py-3 text-left text-xs font-medium text-zinc-500 whitespace-nowrap${h === "Actions" ? " w-24" : ""}`}
+                      >
                         {h}
                       </th>
                     ),
@@ -186,9 +197,9 @@ export default async function AdminOrdersPage({
                           {order.paymentStatus}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <Badge tone={ORDER_TONE[order.status] ?? "muted"}>
-                          {order.status}
+                          {STATUS_LABEL[order.status] ?? order.status}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -232,7 +243,7 @@ export default async function AdminOrdersPage({
                           <span className="text-zinc-300">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 w-24 whitespace-nowrap">
                         <OrderStatusUpdater
                           orderId={order.id}
                           orderNumber={order.orderNumber}
