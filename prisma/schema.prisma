@@ -61,6 +61,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum OrderSource {
+  DIRECT
+  FACEBOOK
+  WHATSAPP
+  INSTAGRAM
+  OTHER
+}
+
 enum RefundStatus {
   REQUESTED
   UNDER_REVIEW
@@ -492,6 +500,8 @@ model Order {
   shippingTotal     Decimal         @default(0) @db.Decimal(12, 2)
   taxTotal          Decimal         @default(0) @db.Decimal(12, 2)
   grandTotal        Decimal         @db.Decimal(12, 2)
+  orderSource       OrderSource     @default(DIRECT)
+  sourceReference   String?
   notes             String?
   trackingNumber    String?
   trackingUrl       String?

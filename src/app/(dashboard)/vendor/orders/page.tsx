@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/format";
+import { OrderSourceBadge } from "@/components/admin/order-source-updater";
 
 const TONE: Record<string, "success"|"warning"|"danger"|"accent"|"muted"> = {
   PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent", DELIVERED: "success", CANCELLED: "danger", REFUNDED: "muted",
@@ -26,7 +27,7 @@ export default async function VendorOrdersPage({ searchParams }: { searchParams:
   const [items, total] = await Promise.all([
     db.orderItem.findMany({
       where, skip: (page - 1) * LIMIT, take: LIMIT, orderBy: { order: { createdAt: "desc" } },
-      include: { order: { include: { customer: { select: { name: true } } } }, product: { select: { name: true } } },
+      include: { order: { include: { customer: { select: { name: true } } }, }, product: { select: { name: true } } },
       distinct: ["orderId"],
     }),
     db.orderItem.groupBy({ by: ["orderId"], where }).then((r) => r.length),
@@ -70,7 +71,7 @@ export default async function VendorOrdersPage({ searchParams }: { searchParams:
           ? <EmptyState icon="📦" title="No orders yet" description="Orders from customers will appear here once your products go live." />
           : <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/50"><tr>
-                {["Order #","Customer","Product","Amount","Status","Date",""].map((h) =>
+                {["Order #","Customer","Product","Source","Amount","Status","Date",""].map((h) =>
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-zinc-50">
@@ -79,6 +80,14 @@ export default async function VendorOrdersPage({ searchParams }: { searchParams:
                     <td className="px-4 py-3 font-mono text-xs font-semibold text-brand-600">{item.order.orderNumber}</td>
                     <td className="px-4 py-3 text-sm">{item.order.customer.name}</td>
                     <td className="px-4 py-3 text-xs text-zinc-600 max-w-[160px] truncate">{item.product.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <OrderSourceBadge source={item.order.orderSource} />
+                        {item.order.sourceReference && (
+                          <span className="font-mono text-[10px] text-zinc-400">#{item.order.sourceReference}</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium">{formatCurrency(Number(item.lineTotal))}</td>
                     <td className="px-4 py-3"><Badge tone={TONE[item.order.status]??'muted'}>{item.order.status}</Badge></td>
                     <td className="px-4 py-3 text-xs text-zinc-400">{new Date(item.order.createdAt).toLocaleDateString("en-PK",{day:"numeric",month:"short"})}</td>

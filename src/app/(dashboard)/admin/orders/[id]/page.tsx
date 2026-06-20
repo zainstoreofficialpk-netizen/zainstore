@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
 import { OrderStatusUpdater } from "@/components/admin/order-status-updater";
 import { VendorOrderPostEx } from "@/components/vendor/vendor-order-postex";
-import { ArrowLeft, Package, MapPin, User, CreditCard, Store } from "lucide-react";
+import { ArrowLeft, Package, MapPin, User, CreditCard, Store, Share2 } from "lucide-react";
 import Link from "next/link";
+import { OrderSourceUpdater } from "@/components/admin/order-source-updater";
 
 const ORDER_TONE: Record<string, "success" | "warning" | "danger" | "accent" | "muted"> = {
   PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent",
@@ -159,6 +160,18 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
               </CardContent>
             </Card>
           )}
+
+          {/* Order Source */}
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Share2 className="w-4 h-4" /> Order Source</CardTitle></CardHeader>
+            <CardContent>
+              <OrderSourceUpdater
+                orderId={order.id}
+                currentSource={order.orderSource}
+                currentReference={order.sourceReference ?? null}
+              />
+            </CardContent>
+          </Card>
 
           {/* Payment */}
           <Card>

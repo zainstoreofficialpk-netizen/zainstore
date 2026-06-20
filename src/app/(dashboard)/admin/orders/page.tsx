@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/format";
 import { EARNINGS_HOLD_DAYS } from "@/lib/admin/withdrawal-data";
 import { OrderStatusUpdater } from "@/components/admin/order-status-updater";
 import { AdminOrderPostEx } from "@/components/admin/admin-order-postex";
+import { OrderSourceBadge, OrderSourceUpdater } from "@/components/admin/order-source-updater";
 
 const ORDER_TONE: Record<string, "success" | "warning" | "danger" | "accent" | "muted"> = {
   PENDING: "warning", PROCESSING: "accent", SHIPPED: "accent",
@@ -136,7 +137,7 @@ export default async function AdminOrdersPage({
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/50">
                 <tr>
-                  {["Order #", "Customer", "Vendor", "Total", "Payment", "Status", "PostEx AWB", "Delivered", "Actions"].map(
+                  {["Order #", "Customer", "Vendor", "Source", "Total", "Payment", "Status", "PostEx AWB", "Delivered", "Actions"].map(
                     (h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
                         {h}
@@ -168,6 +169,13 @@ export default async function AdminOrdersPage({
                       </td>
                       <td className="px-4 py-3 text-xs text-zinc-500">
                         {order.items[0]?.vendor?.store?.name ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <OrderSourceUpdater
+                          orderId={order.id}
+                          currentSource={order.orderSource}
+                          currentReference={order.sourceReference ?? null}
+                        />
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
                         {formatCurrency(Number(order.grandTotal))}

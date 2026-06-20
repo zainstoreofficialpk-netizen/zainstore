@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { OrderStatus, PaymentStatus, NotificationType } from "@prisma/client";
+import { OrderStatus, OrderSource, PaymentStatus, NotificationType } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
@@ -206,6 +206,32 @@ export async function updatePaymentStatus(
     return { success: true, message: `Payment status updated to ${newStatus}.` };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Failed to update payment." };
+  }
+}
+
+// ── Update order source ───────────────────────────────────────────────────────
+
+export async function updateOrderSource(
+  orderId: string,
+  orderSource: OrderSource,
+  sourceReference: string | null,
+): Promise<ActionResult> {
+  try {
+    await requireAdmin();
+
+    const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true } });
+    if (!order) return { success: false, error: "Order not found." };
+
+    await db.order.update({
+      where: { id: orderId },
+      data: { orderSource, sourceReference: sourceReference?.trim() || null },
+    });
+
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${orderId}`);
+    return { success: true, message: `Order source updated to ${orderSource}.` };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Failed to update source." };
   }
 }
 
