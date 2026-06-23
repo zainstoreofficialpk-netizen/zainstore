@@ -7,6 +7,9 @@ import { QueryProvider } from "@/providers/query-provider";
 export const metadata: Metadata = {
   title: "ZainStore.pk Dashboard",
   description: "Enterprise multi-vendor marketplace dashboard system.",
+  verification: {
+    google: "Zzl3pu3dHEWc79lq_cja_In7SltY0P7X7nejmUFbXwk",
+  },
 };
 
 export default function RootLayout({
