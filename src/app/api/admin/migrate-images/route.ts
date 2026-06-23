@@ -1,5 +1,3 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { v2 as cloudinary } from "cloudinary";
@@ -14,22 +12,23 @@ cloudinary.config({
 
 const WP_IP = "77.37.79.214";
 
-function toIpUrl(url: string): string {
-  return url
-    .replace("https://zainstore.pk", `http://${WP_IP}`)
-    .replace("http://zainstore.pk", `http://${WP_IP}`);
-}
-
 async function uploadUrl(url: string): Promise<string> {
+  // Fetch image ourselves with Host header (shared hosting requires it)
+  const pathname = new URL(url).pathname;
+  const res = await fetch(`http://${WP_IP}${pathname}`, {
+    headers: { Host: "zainstore.pk" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
-      toIpUrl(url),
+    cloudinary.uploader.upload_stream(
       { folder: "zainstore/products", resource_type: "image" },
       (err, result) => {
         if (err || !result) return reject(err ?? new Error("Upload failed"));
         resolve(result.secure_url);
       },
-    );
+    ).end(buffer);
   });
 }
 
