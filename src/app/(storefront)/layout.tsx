@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   creator: "ZainStore.pk",
   publisher: "ZainStore.pk",
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  verification: { google: "Zzl3pu3dHEWc79lq_cja_In7SltY0P7X7nejmUFbXwk" },
   openGraph: {
     type: "website",
     locale: "en_PK",
