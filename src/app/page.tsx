@@ -8,5 +8,5 @@ export default async function Home() {
   if (session?.user?.role) {
     redirect(dashboardHomeFor(session.user.role as "SUPER_ADMIN" | "VENDOR" | "CUSTOMER"));
   }
-  redirect("/login");
+  redirect("/shop");
 }
