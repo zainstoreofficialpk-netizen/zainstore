@@ -30,9 +30,9 @@ async function main() {
 
   // ── Users ──────────────────────────────────────────────────
   const admin = await prisma.user.upsert({
-    where: { email: "admin@zainstore.local" },
-    update: {},
-    create: { name: "ZainStore Admin", email: "admin@zainstore.local", emailVerified: new Date(), passwordHash, role: UserRole.SUPER_ADMIN },
+    where: { email: "zainstoreofficial.pk@gmail.com" },
+    update: { passwordHash },
+    create: { name: "ZainStore Admin", email: "zainstoreofficial.pk@gmail.com", emailVerified: new Date(), passwordHash, role: UserRole.SUPER_ADMIN },
   });
 
   const customer = await prisma.user.upsert({
