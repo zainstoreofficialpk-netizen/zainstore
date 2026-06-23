@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, Check, Info,
-  Package, Plus, Trash2, X, Upload, Star, Film,
+  Info, Package, Plus, Trash2, X, Upload, Star, Film,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,49 +21,6 @@ type Brand = { id: string; name: string };
 
 function toSlug(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-// ── Step progress bar ─────────────────────────────────────────────────────────
-
-const STEPS = [
-  { num: 1, label: "Basic Info" },
-  { num: 2, label: "Media" },
-  { num: 3, label: "Pricing" },
-  { num: 4, label: "Inventory" },
-  { num: 5, label: "Variants" },
-  { num: 6, label: "Shipping" },
-  { num: 7, label: "SEO" },
-  { num: 8, label: "Publish" },
-];
-
-function StepBar({ current }: { current: number }) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-center gap-0">
-        {STEPS.map((step, i) => (
-          <div key={step.num} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center">
-              <div className={`flex size-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                step.num < current
-                  ? "bg-brand-500 text-white"
-                  : step.num === current
-                    ? "border-2 border-brand-500 text-brand-600"
-                    : "border-2 border-zinc-200 text-zinc-400"
-              }`}>
-                {step.num < current ? <Check size={14} /> : step.num}
-              </div>
-              <span className={`mt-1.5 hidden text-[10px] font-medium sm:block ${step.num === current ? "text-brand-600" : "text-zinc-400"}`}>
-                {step.label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={`mx-1 h-0.5 flex-1 transition-colors ${step.num < current ? "bg-brand-500" : "bg-zinc-200"}`} />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ── Default state ─────────────────────────────────────────────────────────────
@@ -1064,79 +1020,7 @@ function Step7({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
   );
 }
 
-// ── Step 8 — Status ───────────────────────────────────────────────────────────
-
-function Step8({ form, setForm }: { form: ProductFormData; setForm: (f: ProductFormData) => void }) {
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-        <p className="text-sm font-semibold text-amber-800">⚠️ Vendor Note</p>
-        <p className="mt-1 text-sm text-amber-700">
-          Products submitted for review require <strong>Super Admin approval</strong> before becoming visible in the marketplace. You will receive a notification once reviewed.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {[
-          {
-            value: "DRAFT",
-            title: "Save as Draft",
-            description: "Save now, submit for review later. Product is not visible to customers.",
-            icon: "📝",
-          },
-          {
-            value: "PENDING_REVIEW",
-            title: "Submit for Review",
-            description: "Send to Super Admin for approval. Product will go live after approval.",
-            icon: "🚀",
-          },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setForm({ ...form, status: opt.value as "DRAFT" | "PENDING_REVIEW" })}
-            className={`rounded-xl border-2 p-5 text-left transition-all ${
-              form.status === opt.value
-                ? "border-brand-500 bg-brand-50"
-                : "border-zinc-200 hover:border-zinc-300"
-            }`}
-          >
-            <div className="mb-2 text-2xl">{opt.icon}</div>
-            <p className="font-semibold text-zinc-900">{opt.title}</p>
-            <p className="mt-1 text-sm text-zinc-500">{opt.description}</p>
-            {form.status === opt.value && (
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-600">
-                <Check size={12} /> Selected
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <Card>
-        <CardHeader><CardTitle>Product Summary</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {[
-            { label: "Name", value: form.name || "—" },
-            { label: "SKU", value: form.sku || "—" },
-            { label: "Price", value: form.price ? `PKR ${parseFloat(form.price).toLocaleString("en-PK")}` : "—" },
-            { label: "Stock", value: form.stock },
-            { label: "Images", value: `${form.images.length} image${form.images.length !== 1 ? "s" : ""}` },
-            { label: "Variants", value: form.variants.length > 0 ? `${form.variants.length} combinations` : "No variants" },
-          ].map((row) => (
-            <div key={row.label} className="flex justify-between text-sm">
-              <span className="text-zinc-500">{row.label}</span>
-              <span className="font-medium text-zinc-800">{row.value}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ── Main Wizard ───────────────────────────────────────────────────────────────
+// ── Main Product Form (single page) ──────────────────────────────────────────
 
 export function ProductWizard({
   categories,
@@ -1148,44 +1032,27 @@ export function ProductWizard({
   shippingSettings: ShippingSettings;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(1);
   const [form, setForm] = useState<ProductFormData>(DEFAULT);
   const [variantAttrs, setVariantAttrs] = useState<AttributeGroup[]>([]);
   const [isPending, startTransition] = useTransition();
 
-  function validateStep(): string | null {
-    if (step === 1) {
-      if (!form.name.trim()) return "Product name is required.";
-      if (!form.slug.trim()) return "Slug is required.";
-      if (!form.description.trim()) return "Description is required.";
-      if (!form.categoryId) return "Please select a category.";
-    }
-    if (step === 3) {
-      if (!form.price || parseFloat(form.price) <= 0) return "Regular price is required.";
-      if (form.salePrice && parseFloat(form.salePrice) >= parseFloat(form.price))
-        return "Sale price must be lower than regular price.";
-    }
-    if (step === 6) {
-      if (!form.weight || parseInt(form.weight) <= 0) return "Product weight in grams is required.";
-    }
+  function validate(): string | null {
+    if (!form.name.trim()) return "Product name is required.";
+    if (!form.slug.trim()) return "Slug is required.";
+    if (!form.description.trim()) return "Full description is required.";
+    if (!form.categoryId) return "Please select a category.";
+    if (!form.price || parseFloat(form.price) <= 0) return "Regular price is required.";
+    if (form.salePrice && parseFloat(form.salePrice) >= parseFloat(form.price))
+      return "Sale price must be lower than regular price.";
+    if (!form.weight || parseInt(form.weight) <= 0) return "Product weight (grams) is required.";
     return null;
   }
 
-  function next() {
-    const error = validateStep();
+  function handleSubmit(status: "DRAFT" | "PENDING_REVIEW") {
+    const error = validate();
     if (error) { toast.error(error); return; }
-    setStep((s) => Math.min(s + 1, 8));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function prev() {
-    setStep((s) => Math.max(s - 1, 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function handleSubmit() {
     startTransition(async () => {
-      const r = await createProductAction(form);
+      const r = await createProductAction({ ...form, status });
       if (r.success) {
         toast.success(r.message);
         router.push("/vendor/products");
@@ -1198,46 +1065,86 @@ export function ProductWizard({
   const stepProps = { form, setForm };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-zinc-950">Add New Product</h2>
-        <p className="mt-0.5 text-sm text-zinc-400">Fill in all details to create a product listing.</p>
+    <div className="mx-auto max-w-3xl space-y-6 pb-10">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-zinc-950">Add New Product</h2>
+          <p className="mt-0.5 text-sm text-zinc-400">Fill in all details to create a product listing.</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={isPending}>
+            Save Draft
+          </Button>
+          <Button type="button" size="sm" onClick={() => handleSubmit("PENDING_REVIEW")} disabled={isPending}>
+            {isPending ? "Saving…" : "Submit for Review"}
+          </Button>
+        </div>
       </div>
 
-      <StepBar current={step} />
-
+      {/* Basic Info */}
       <Card>
-        <CardHeader>
-          <CardTitle>{STEPS[step - 1].label}</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Basic Info</CardTitle></CardHeader>
         <CardContent>
-          {step === 1 && <Step1 {...stepProps} categories={categories} brands={brands} />}
-          {step === 2 && <Step2 {...stepProps} />}
-          {step === 3 && <Step3 {...stepProps} />}
-          {step === 4 && <Step4 {...stepProps} />}
-          {step === 5 && <Step5 {...stepProps} attrs={variantAttrs} setAttrs={setVariantAttrs} />}
-          {step === 6 && <Step6 {...stepProps} shippingSettings={shippingSettings} />}
-          {step === 7 && <Step7 {...stepProps} />}
-          {step === 8 && <Step8 {...stepProps} />}
+          <Step1 {...stepProps} categories={categories} brands={brands} />
         </CardContent>
       </Card>
 
-      {/* Navigation */}
-      <div className="mt-6 flex items-center justify-between">
-        <Button variant="outline" onClick={prev} disabled={step === 1} className="gap-2">
-          <ArrowLeft size={15} /> Previous
-        </Button>
-        <span className="text-xs text-zinc-400">Step {step} of 8</span>
-        {step < 8 ? (
-          <Button onClick={next} className="gap-2">
-            Next <ArrowRight size={15} />
+      {/* Media — Step2 already renders its own Cards */}
+      <Step2 {...stepProps} />
+
+      {/* Pricing */}
+      <Card>
+        <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
+        <CardContent>
+          <Step3 {...stepProps} />
+        </CardContent>
+      </Card>
+
+      {/* Inventory */}
+      <Card>
+        <CardHeader><CardTitle>Inventory</CardTitle></CardHeader>
+        <CardContent>
+          <Step4 {...stepProps} />
+        </CardContent>
+      </Card>
+
+      {/* Variants — Step5 already renders its own Cards */}
+      <Step5 {...stepProps} attrs={variantAttrs} setAttrs={setVariantAttrs} />
+
+      {/* Shipping */}
+      <Card>
+        <CardHeader><CardTitle>Shipping</CardTitle></CardHeader>
+        <CardContent>
+          <Step6 {...stepProps} shippingSettings={shippingSettings} />
+        </CardContent>
+      </Card>
+
+      {/* SEO */}
+      <Card>
+        <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+        <CardContent>
+          <Step7 {...stepProps} />
+        </CardContent>
+      </Card>
+
+      {/* Publish action bar */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <p className="text-sm font-semibold text-amber-800">⚠️ Admin Approval Required</p>
+        <p className="mt-1 text-sm text-amber-700">
+          Products submitted for review require <strong>Super Admin approval</strong> before going live. Save as Draft to continue editing later.
+        </p>
+        <div className="mt-4 flex gap-3">
+          <Button type="button" variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={isPending}>
+            Save as Draft
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={isPending} className="gap-2">
-            {isPending ? "Creating…" : form.status === "PENDING_REVIEW" ? "Submit for Review" : "Save as Draft"}
+          <Button type="button" onClick={() => handleSubmit("PENDING_REVIEW")} disabled={isPending}>
+            {isPending ? "Submitting…" : "Submit for Review"}
           </Button>
-        )}
+        </div>
       </div>
+
     </div>
   );
 }
