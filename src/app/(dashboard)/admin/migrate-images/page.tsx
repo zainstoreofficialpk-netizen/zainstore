@@ -3,74 +3,30 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, CheckCircle, Loader2, AlertTriangle } from "lucide-react";
+import { ImageIcon, CheckCircle, Loader2 } from "lucide-react";
 
 export default function MigrateImagesPage() {
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
-  const [total, setTotal] = useState(0);
-  const [migrated, setMigrated] = useState(0);
-  const [failed, setFailed] = useState(0);
-  const [log, setLog] = useState<string[]>([]);
+  const [result, setResult] = useState<{ updated: number; skipped: number; total: number } | null>(null);
 
-  async function startMigration() {
+  async function applyMap() {
     setStatus("running");
-    setMigrated(0);
-    setFailed(0);
-    setLog([]);
-
     try {
-      const res = await fetch("/api/admin/migrate-images");
-      const { total: t } = await res.json();
-      setTotal(t);
-
-      if (t === 0) {
-        setLog(["No WordPress images found — all images are already on Cloudinary!"]);
-        setStatus("done");
-        return;
-      }
-
-      setLog([`Found ${t} images to migrate...`]);
-
-      let totalSuccess = 0;
-      let totalFailed = 0;
-      let done = false;
-
-      while (!done) {
-        const r = await fetch("/api/admin/migrate-images", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ offset: 0, batchSize: 20 }),
-        });
-        const data = await r.json();
-
-        totalSuccess += data.success;
-        totalFailed += data.failed;
-        done = data.done;
-
-        setMigrated(totalSuccess);
-        setFailed(totalFailed);
-        setLog((prev) => [
-          ...prev,
-          `Batch: ${data.success} uploaded, ${data.failed} failed — ${data.remaining} remaining`,
-        ]);
-      }
-
+      const res = await fetch("/api/admin/apply-image-map", { method: "POST" });
+      const data = await res.json();
+      setResult(data);
       setStatus("done");
-      setLog((prev) => [...prev, `✓ Migration complete! ${totalSuccess} images moved to Cloudinary.`]);
     } catch (e) {
       setStatus("error");
-      setLog((prev) => [...prev, `Error: ${e instanceof Error ? e.message : String(e)}`]);
     }
   }
-
-  const percent = total > 0 ? Math.round((migrated / total) * 100) : 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900">Migrate Images to Cloudinary</h1>
+        <h1 className="text-2xl font-bold text-zinc-900">Fix Product Images</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Moves all product images from the old WordPress server to Cloudinary permanently.
+          Updates all product image URLs in the database to use Cloudinary.
         </p>
       </div>
 
@@ -78,75 +34,46 @@ export default function MigrateImagesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon size={18} className="text-brand-500" />
-            Image Migration
+            Apply Cloudinary Image URLs
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status === "idle" && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              <p className="font-semibold">Before you start:</p>
-              <ul className="mt-1 list-disc pl-4 space-y-1">
-                <li>This will upload all WordPress product images to Cloudinary</li>
-                <li>The process may take 10–30 minutes for 5,000 products</li>
-                <li>Do not close this tab while running</li>
-                <li>After completion, you can safely delete WordPress hosting</li>
-              </ul>
-            </div>
-          )}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            This will update <strong>7,607 product images</strong> in the database to point to
+            Cloudinary instead of the old WordPress server. Takes about 30–60 seconds.
+          </div>
 
-          {status !== "idle" && total > 0 && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-medium text-zinc-700">
-                <span>{migrated} of {total} images migrated</span>
-                <span>{percent}%</span>
+          {status === "done" && result && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 space-y-1">
+              <div className="flex items-center gap-2 font-semibold">
+                <CheckCircle size={16} /> Done!
               </div>
-              <div className="h-3 w-full rounded-full bg-zinc-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-brand-500 transition-all duration-300"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-              {failed > 0 && (
-                <p className="text-xs text-rose-500">{failed} images failed to upload</p>
-              )}
-            </div>
-          )}
-
-          {status === "done" && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              <CheckCircle size={16} className="shrink-0" />
-              <span>All images migrated successfully! You can now delete WordPress hosting.</span>
+              <p>Updated: {result.updated} images</p>
+              <p>Skipped (not in production): {result.skipped}</p>
+              <p className="mt-2 font-medium">All product images now load from Cloudinary. You can safely delete WordPress hosting.</p>
             </div>
           )}
 
           {status === "error" && (
-            <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-              <AlertTriangle size={16} className="shrink-0" />
-              <span>An error occurred. Check the log below and try again.</span>
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              Something went wrong. Please try again.
             </div>
           )}
 
           <Button
-            onClick={startMigration}
+            onClick={applyMap}
             disabled={status === "running" || status === "done"}
             className="w-full"
+            size="lg"
           >
             {status === "running" ? (
-              <><Loader2 size={16} className="mr-2 animate-spin" /> Migrating...</>
+              <><Loader2 size={16} className="mr-2 animate-spin" /> Updating database...</>
             ) : status === "done" ? (
-              <><CheckCircle size={16} className="mr-2" /> Migration Complete</>
+              <><CheckCircle size={16} className="mr-2" /> Complete</>
             ) : (
-              "Start Migration"
+              "Apply Cloudinary URLs to Database"
             )}
           </Button>
-
-          {log.length > 0 && (
-            <div className="rounded-lg bg-zinc-950 p-4 font-mono text-xs text-zinc-300 max-h-60 overflow-y-auto space-y-1">
-              {log.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
