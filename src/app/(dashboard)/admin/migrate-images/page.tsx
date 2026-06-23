@@ -64,7 +64,7 @@ export default function MigrateImagesPage() {
             onClick={applyMap}
             disabled={status === "running" || status === "done"}
             className="w-full"
-            size="lg"
+            size="default"
           >
             {status === "running" ? (
               <><Loader2 size={16} className="mr-2 animate-spin" /> Updating database...</>
