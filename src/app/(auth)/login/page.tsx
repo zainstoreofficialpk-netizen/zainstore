@@ -1,10 +1,9 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { Store } from "lucide-react";
 
 export default function LoginPage() {
   return (
@@ -17,7 +16,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams.get("callbackUrl");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,7 +41,13 @@ function LoginForm() {
     if (result?.error) {
       setError("Invalid email or password.");
     } else {
-      router.push(callbackUrl);
+      // Resolve destination: explicit callbackUrl > role-based dashboard > /login
+      const session = await getSession();
+      const role = session?.user?.role as string | undefined;
+      const dest =
+        callbackUrl ??
+        (role === "SUPER_ADMIN" ? "/admin" : role === "VENDOR" ? "/vendor" : "/customer");
+      router.push(dest);
       router.refresh();
     }
   }
