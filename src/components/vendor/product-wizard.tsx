@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, Check, ChevronDown, Image, Info,
-  Package, Plus, Search, Tag, Trash2, X, Upload, Star, Film,
+  ArrowLeft, ArrowRight, Check, Info,
+  Package, Plus, Trash2, X, Upload, Star, Film,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -221,8 +221,6 @@ function Step1({ form, setForm, categories, brands }: {
 }
 
 // ── Step 2 — Media ────────────────────────────────────────────────────────────
-
-const MAX_GALLERY = 4; // primary + 3 gallery = 4 total displayed slots
 
 function Step2({ form, setForm }: { form: ProductFormData; setForm: (f: ProductFormData) => void }) {
   const [imgUploading, setImgUploading] = useState<number | null>(null); // slot index being uploaded
@@ -611,41 +609,45 @@ function Step4({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
 
 type AttributeGroup = { name: string; values: string[] };
 
-function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductFormData) => void }) {
-  const [attrs, setAttrs] = useState<AttributeGroup[]>([]);
+function Step5({
+  form,
+  setForm,
+  attrs,
+  setAttrs,
+}: {
+  form: ProductFormData;
+  setForm: (f: ProductFormData) => void;
+  attrs: AttributeGroup[];
+  setAttrs: (a: AttributeGroup[]) => void;
+}) {
   const [attrName, setAttrName] = useState("");
   const [attrValue, setAttrValue] = useState("");
   const [selectedAttrIdx, setSelectedAttrIdx] = useState(0);
-  const [generated, setGenerated] = useState(false);
 
   function addAttribute() {
     if (!attrName.trim()) return;
     setAttrs([...attrs, { name: attrName.trim(), values: [] }]);
     setAttrName("");
-    setGenerated(false);
   }
 
   function addValue(attrIdx: number) {
     if (!attrValue.trim()) return;
-    const updated = [...attrs];
-    if (!updated[attrIdx].values.includes(attrValue.trim())) {
-      updated[attrIdx].values.push(attrValue.trim());
-    }
-    setAttrs(updated);
+    const val = attrValue.trim();
+    if (attrs[attrIdx].values.includes(val)) { setAttrValue(""); return; }
+    setAttrs(attrs.map((a, i) => i === attrIdx ? { ...a, values: [...a.values, val] } : a));
     setAttrValue("");
-    setGenerated(false);
   }
 
   function removeAttr(i: number) {
-    setAttrs(attrs.filter((_, idx) => idx !== i));
-    setGenerated(false);
+    const next = attrs.filter((_, idx) => idx !== i);
+    setAttrs(next);
+    if (selectedAttrIdx >= next.length) setSelectedAttrIdx(Math.max(0, next.length - 1));
   }
 
   function removeValue(attrIdx: number, valIdx: number) {
-    const updated = [...attrs];
-    updated[attrIdx].values.splice(valIdx, 1);
-    setAttrs(updated);
-    setGenerated(false);
+    setAttrs(attrs.map((a, i) =>
+      i === attrIdx ? { ...a, values: a.values.filter((_, j) => j !== valIdx) } : a,
+    ));
   }
 
   function generateCombinations() {
@@ -677,7 +679,6 @@ function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
     });
 
     setForm({ ...form, variants });
-    setGenerated(true);
     toast.success(`Generated ${variants.length} variant combination${variants.length !== 1 ? "s" : ""}.`);
   }
 
@@ -690,7 +691,6 @@ function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
   function clearVariants() {
     setForm({ ...form, variants: [] });
     setAttrs([]);
-    setGenerated(false);
   }
 
   return (
@@ -720,20 +720,27 @@ function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
 
           {attrs.length > 0 && (
             <div className="space-y-3">
-              {/* Tab select */}
+              {/* Tab select — uses div to avoid nested <button> inside <button> */}
               <div className="flex gap-1 border-b border-zinc-100 pb-1">
                 {attrs.map((attr, i) => (
-                  <button
+                  <div
                     key={i}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedAttrIdx(i)}
-                    className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm font-medium ${selectedAttrIdx === i ? "border-b-2 border-brand-500 text-brand-600" : "text-zinc-500 hover:text-zinc-700"}`}
+                    onKeyDown={(e) => e.key === "Enter" && setSelectedAttrIdx(i)}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm font-medium ${selectedAttrIdx === i ? "border-b-2 border-brand-500 text-brand-600" : "text-zinc-500 hover:text-zinc-700"}`}
                   >
                     {attr.name}
                     <span className="rounded-full bg-zinc-100 px-1.5 text-xs">{attr.values.length}</span>
-                    <button onClick={(e) => { e.stopPropagation(); removeAttr(i); }} className="ml-1 text-zinc-300 hover:text-rose-500">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeAttr(i); }}
+                      className="ml-1 text-zinc-300 hover:text-rose-500"
+                    >
                       <X size={12} />
                     </button>
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -752,7 +759,7 @@ function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
                   {attrs[selectedAttrIdx].values.map((val, vi) => (
                     <span key={vi} className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
                       {val}
-                      <button onClick={() => removeValue(selectedAttrIdx, vi)} className="text-brand-400 hover:text-brand-700"><X size={11} /></button>
+                      <button type="button" onClick={() => removeValue(selectedAttrIdx, vi)} className="text-brand-400 hover:text-brand-700"><X size={11} /></button>
                     </span>
                   ))}
                 </div>
@@ -762,7 +769,12 @@ function Step5({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
 
           {attrs.length > 0 && (
             <div className="flex gap-3 pt-2">
-              <Button type="button" onClick={generateCombinations} className="gap-2">
+              <Button
+                type="button"
+                onClick={generateCombinations}
+                disabled={attrs.every((a) => a.values.length === 0)}
+                className="gap-2"
+              >
                 Generate Combinations
               </Button>
               {form.variants.length > 0 && (
@@ -1138,6 +1150,7 @@ export function ProductWizard({
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ProductFormData>(DEFAULT);
+  const [variantAttrs, setVariantAttrs] = useState<AttributeGroup[]>([]);
   const [isPending, startTransition] = useTransition();
 
   function validateStep(): string | null {
@@ -1202,7 +1215,7 @@ export function ProductWizard({
           {step === 2 && <Step2 {...stepProps} />}
           {step === 3 && <Step3 {...stepProps} />}
           {step === 4 && <Step4 {...stepProps} />}
-          {step === 5 && <Step5 {...stepProps} />}
+          {step === 5 && <Step5 {...stepProps} attrs={variantAttrs} setAttrs={setVariantAttrs} />}
           {step === 6 && <Step6 {...stepProps} shippingSettings={shippingSettings} />}
           {step === 7 && <Step7 {...stepProps} />}
           {step === 8 && <Step8 {...stepProps} />}
