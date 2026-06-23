@@ -106,14 +106,20 @@ export function ProductCard({
             src={product.imageUrl}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              e.currentTarget.nextElementSibling?.removeAttribute("style");
+            }}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200">
-            <span className="text-3xl font-black text-zinc-300 select-none">
-              {product.name[0]}
-            </span>
-          </div>
-        )}
+        ) : null}
+        <div
+          style={product.imageUrl ? { display: "none" } : undefined}
+          className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200"
+        >
+          <span className="text-3xl font-black text-zinc-300 select-none">
+            {product.name[0]}
+          </span>
+        </div>
 
         {/* Sale badge */}
         {discount > 0 && (
