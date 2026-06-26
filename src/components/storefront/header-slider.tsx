@@ -56,16 +56,14 @@ export function HeaderSlider({ slides }: { slides: Slide[] }) {
               <h2 className="text-white text-2xl sm:text-3xl lg:text-4xl font-black drop-shadow-lg max-w-xl leading-tight">
                 {slide.title}
               </h2>
-              {slide.linkUrl && (
-                <Link
-                  href={slide.linkUrl}
-                  className="mt-4 inline-block px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-full text-sm shadow transition-all hover:scale-105"
-                >
-                  Shop Now
-                </Link>
-              )}
+              <Link
+                href={slide.linkUrl ?? "/shop"}
+                className="mt-4 inline-block px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-full text-sm shadow transition-all hover:scale-105"
+              >
+                Shop Now
+              </Link>
             </div>
-            {slide.linkUrl && <Link href={slide.linkUrl} className="absolute inset-0" aria-label={slide.title} />}
+            <Link href={slide.linkUrl ?? "/shop"} className="absolute inset-0" aria-label={slide.title} />
           </div>
         ))}
       </div>
