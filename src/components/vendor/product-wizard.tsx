@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Info, Package, Plus, Trash2, X, Upload, Star, Film,
@@ -183,6 +183,10 @@ function Step2({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
 
+  // Always-fresh ref so async upload closures read the latest form state
+  const formRef = useRef(form);
+  formRef.current = form;
+
   // ── Upload a single image file ─────────────────────────────────────────────
 
   async function uploadImage(file: File, slotIndex: number) {
@@ -206,24 +210,24 @@ function Step2({ form, setForm }: { form: ProductFormData; setForm: (f: ProductF
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Upload failed."); return; }
 
-      const newImg = { url: data.url as string, alt: form.name || file.name, sortOrder: slotIndex };
-      const imgs = [...form.images];
-
-      if (slotIndex < imgs.length) {
-        imgs[slotIndex] = { ...imgs[slotIndex], url: data.url, alt: form.name || file.name };
-      } else {
-        // Fill any gaps between current length and slotIndex with empty placeholders, then add
-        imgs.push(newImg);
+      const uploadedUrl = data.url as string;
+      const current = formRef.current;
+      const imgs = [...current.images];
+      while (imgs.length <= slotIndex) {
+        imgs.push({ url: "", alt: "", sortOrder: imgs.length });
       }
-      setForm({ ...form, images: imgs.map((img, idx) => ({ ...img, sortOrder: idx })) });
+      imgs[slotIndex] = { url: uploadedUrl, alt: current.name || file.name, sortOrder: slotIndex };
+      const clean = imgs.filter((img) => img.url);
+      setForm({ ...current, images: clean.map((img, idx) => ({ ...img, sortOrder: idx })) });
     } finally {
       setImgUploading(null);
     }
   }
 
   function removeImage(i: number) {
-    const imgs = form.images.filter((_, idx) => idx !== i).map((img, idx) => ({ ...img, sortOrder: idx }));
-    setForm({ ...form, images: imgs });
+    const current = formRef.current;
+    const imgs = current.images.filter((_, idx) => idx !== i).map((img, idx) => ({ ...img, sortOrder: idx }));
+    setForm({ ...current, images: imgs });
   }
 
   function handleImgDrop(e: React.DragEvent, slotIndex: number) {
