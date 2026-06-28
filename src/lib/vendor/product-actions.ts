@@ -73,7 +73,7 @@ export type ProductFormData = {
   seoDescription: string;
   seoKeywords: string;
   // Step 8
-  status: "DRAFT" | "PENDING_REVIEW";
+  status: "DRAFT" | "PENDING_REVIEW" | "ACTIVE";
 };
 
 // ── Create product ────────────────────────────────────────────────────────────

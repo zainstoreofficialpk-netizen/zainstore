@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertTriangle, Package } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Package, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -116,8 +116,47 @@ export function ProductEditForm({
   });
 
   const [weightError, setWeightError] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingSlot, setPendingSlot] = useState<number | null>(null);
 
-  function handleSubmit(targetStatus: "DRAFT" | "PENDING_REVIEW") {
+  async function uploadImage(file: File, slotIndex: number) {
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Only JPG, PNG, WEBP or GIF allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB.");
+      return;
+    }
+    setUploadingIdx(slotIndex);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "image");
+      const res = await fetch("/api/vendor/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        const imgs = [...form.images];
+        if (slotIndex < imgs.length) {
+          imgs[slotIndex] = { ...imgs[slotIndex], url: data.url };
+        } else {
+          imgs.push({ url: data.url, alt: form.name, sortOrder: imgs.length });
+        }
+        setForm({ ...form, images: imgs });
+        toast.success("Image uploaded.");
+      } else {
+        toast.error(data.error ?? "Upload failed.");
+      }
+    } catch {
+      toast.error("Upload failed.");
+    } finally {
+      setUploadingIdx(null);
+      setPendingSlot(null);
+    }
+  }
+
+  function handleSubmit(targetStatus: "DRAFT" | "PENDING_REVIEW" | "KEEP") {
     if (targetStatus === "PENDING_REVIEW" && (!form.weight || parseInt(form.weight) <= 0)) {
       setWeightError(true);
       toast.error("Product weight is required before submitting for review.");
@@ -125,8 +164,11 @@ export function ProductEditForm({
       return;
     }
     setWeightError(false);
+    const resolvedStatus = targetStatus === "KEEP"
+      ? (product.status as "DRAFT" | "PENDING_REVIEW" | "ACTIVE")
+      : targetStatus;
     startTransition(async () => {
-      const r = await updateProductAction(product.id, { ...form, status: targetStatus });
+      const r = await updateProductAction(product.id, { ...form, status: resolvedStatus });
       if (r.success) {
         toast.success(r.message);
         router.push("/vendor/products");
@@ -262,21 +304,63 @@ export function ProductEditForm({
       <Card>
         <CardHeader><CardTitle>Images</CardTitle></CardHeader>
         <CardContent className="space-y-3">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && pendingSlot !== null) uploadImage(file, pendingSlot);
+              e.target.value = "";
+            }}
+          />
           {form.images.map((img, i) => (
             <div key={i} className="flex items-center gap-3">
-              <img src={img.url} alt={img.alt} className="size-12 rounded-md object-cover border border-zinc-200" />
+              {/* Thumbnail / upload slot */}
+              <button
+                type="button"
+                title="Click to replace image"
+                onClick={() => { setPendingSlot(i); fileInputRef.current?.click(); }}
+                className="relative size-12 shrink-0 rounded-md overflow-hidden border border-zinc-200 bg-zinc-50 hover:border-brand-400 transition-colors"
+              >
+                {uploadingIdx === i ? (
+                  <span className="flex items-center justify-center h-full">
+                    <Loader2 size={16} className="animate-spin text-brand-500" />
+                  </span>
+                ) : img.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img.url} alt={img.alt} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="flex items-center justify-center h-full">
+                    <Upload size={14} className="text-zinc-400" />
+                  </span>
+                )}
+              </button>
               <Input value={img.url} onChange={(e) => {
                 const imgs = [...form.images];
                 imgs[i] = { ...imgs[i], url: e.target.value };
                 setForm({ ...form, images: imgs });
-              }} placeholder="Image URL" className="flex-1" />
-              <button onClick={() => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) })}
-                className="shrink-0 text-zinc-300 hover:text-rose-500">×</button>
+              }} placeholder="Image URL or click thumbnail to upload" className="flex-1" />
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) })}
+                className="shrink-0 text-zinc-300 hover:text-rose-500 text-lg leading-none"
+              >×</button>
             </div>
           ))}
-          <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, images: [...form.images, { url: "", alt: form.name, sortOrder: form.images.length }] })}>
-            + Add Image URL
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              setPendingSlot(form.images.length);
+              fileInputRef.current?.click();
+            }}>
+              <Upload size={13} className="mr-1" /> Upload Image
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, images: [...form.images, { url: "", alt: form.name, sortOrder: form.images.length }] })}>
+              + Add by URL
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -345,12 +429,25 @@ export function ProductEditForm({
 
       {/* Save actions */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4">
-        <Button variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={isPending}>
-          {isPending ? "Saving…" : "Save as Draft"}
-        </Button>
-        <Button onClick={() => handleSubmit("PENDING_REVIEW")} disabled={isPending}>
-          {isPending ? "Submitting…" : "Save & Submit for Review"}
-        </Button>
+        {product.status === "ACTIVE" ? (
+          <>
+            <Button onClick={() => handleSubmit("KEEP")} disabled={isPending}>
+              {isPending ? "Saving…" : "Save Changes"}
+            </Button>
+            <Button variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={isPending}>
+              {isPending ? "Saving…" : "Unpublish (Save as Draft)"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={isPending}>
+              {isPending ? "Saving…" : "Save as Draft"}
+            </Button>
+            <Button onClick={() => handleSubmit("PENDING_REVIEW")} disabled={isPending}>
+              {isPending ? "Submitting…" : "Save & Submit for Review"}
+            </Button>
+          </>
+        )}
         <Link href="/vendor/products" className="ml-auto text-sm text-zinc-400 hover:text-zinc-600">Cancel</Link>
       </div>
     </div>

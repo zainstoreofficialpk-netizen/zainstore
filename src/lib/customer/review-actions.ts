@@ -253,6 +253,95 @@ export async function reportReviewAction(data: z.infer<typeof reportSchema>): Pr
   }
 }
 
+// ── Submit review by productId (storefront form) ──────────────────────────────
+
+const submitByProductSchema = z.object({
+  productId: z.string().min(1),
+  rating: z.coerce.number().int().min(1).max(5),
+  title: z.string().max(120).optional(),
+  comment: z.string().min(10, "Review must be at least 10 characters").max(2000),
+});
+
+export async function submitProductReviewAction(
+  data: z.infer<typeof submitByProductSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requireCustomer();
+    const parsed = submitByProductSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+    const { productId, rating, title, comment } = parsed.data;
+
+    // Find any delivered+paid order item for this product and customer (not yet reviewed)
+    const orderItem = await db.orderItem.findFirst({
+      where: {
+        productId,
+        order: {
+          customerId: user.id,
+          status: OrderStatus.DELIVERED,
+          paymentStatus: PaymentStatus.PAID,
+        },
+        review: null,
+      },
+    });
+
+    if (!orderItem) {
+      return {
+        success: false,
+        error: "You can only review products from your delivered orders. If you have ordered this product, please wait until it is delivered.",
+      };
+    }
+
+    const suspicious = await isSuspiciousReview(user.id, productId);
+
+    const review = await db.review.create({
+      data: {
+        userId: user.id,
+        productId,
+        orderItemId: orderItem.id,
+        title,
+        rating,
+        comment,
+        verifiedPurchase: true,
+        status: suspicious ? ReviewStatus.FLAGGED : ReviewStatus.APPROVED,
+        flagged: suspicious,
+      },
+    });
+
+    if (!suspicious) {
+      // Use vendorId directly from orderItem — no extra product join needed
+      const vendor = await db.vendorProfile.findUnique({
+        where: { id: orderItem.vendorId },
+        select: { userId: true },
+      });
+      const productName = await db.product.findUnique({
+        where: { id: productId },
+        select: { name: true },
+      });
+      if (vendor) {
+        await createNotification({
+          userId: vendor.userId,
+          type: NotificationType.REVIEW,
+          title: `New ${rating}★ review on "${productName?.name ?? "your product"}"`,
+          body: `"${comment.slice(0, 100)}${comment.length > 100 ? "…" : ""}"`,
+          url: "/vendor/reviews",
+        });
+      }
+      upsertVendorTrustScore(orderItem.vendorId).catch(() => {});
+    }
+
+    revalidatePath(`/shop/product/${productId}`);
+    revalidatePath("/customer/reviews");
+    return {
+      success: true,
+      message: suspicious ? "Review submitted and pending moderation." : "Review published!",
+      data: { id: review.id },
+    };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Failed to submit review." };
+  }
+}
+
 // ── Data: eligible order items for review ─────────────────────────────────────
 
 export async function getReviewableOrderItems(userId: string) {

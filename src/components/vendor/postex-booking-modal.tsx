@@ -201,11 +201,11 @@ export function PostExBookingModal({
             {/* Tracking Number */}
             <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
               <p className="text-xs text-neutral-500 mb-1 font-medium uppercase tracking-wide">AWB / Tracking Number</p>
-              <p className="font-mono text-2xl font-black text-neutral-900 tracking-wider">{bookedTracking}</p>
+              <p className="font-mono text-xl font-black text-neutral-900 tracking-wider break-all">{bookedTracking}</p>
             </div>
 
             {/* Shipment Details */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                 <div className="flex items-center gap-1.5 mb-1">
                   <User className="w-3.5 h-3.5 text-neutral-400" />
@@ -284,7 +284,7 @@ export function PostExBookingModal({
                 <User className="w-4 h-4 text-green-600" />
                 Customer Contact
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">Full Name</label>
                   <input
@@ -317,7 +317,7 @@ export function PostExBookingModal({
                 <Package className="w-4 h-4 text-green-600" />
                 Order Details
               </h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">Order Date</label>
                   <input
@@ -397,7 +397,7 @@ export function PostExBookingModal({
                 <Truck className="w-4 h-4 text-green-600" />
                 Pickup &amp; Return
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">Pickup Address Code</label>
                   <input

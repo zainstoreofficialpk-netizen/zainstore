@@ -314,7 +314,7 @@ export function ProductReviewPanel({ product }: { product: Product }) {
 
       <div className="space-y-6">
         {/* ── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex items-start gap-3">
             <Link
               href="/admin/products"
@@ -339,7 +339,7 @@ export function ProductReviewPanel({ product }: { product: Product }) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex shrink-0 gap-2">
+          <div className="flex flex-wrap gap-2 sm:shrink-0">
             {canRequestChanges && (
               <Button
                 size="sm"
@@ -551,11 +551,11 @@ export function ProductReviewPanel({ product }: { product: Product }) {
 
         {/* ── Bottom action bar ─────────────────────────────────────── */}
         <div className="sticky bottom-0 -mx-6 border-t border-zinc-200 bg-white/95 backdrop-blur px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <p className="text-sm text-zinc-500">
               Review all sections above, then take an action. Vendor will be notified immediately.
             </p>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex flex-wrap gap-2 sm:shrink-0">
               {canRequestChanges && (
                 <Button variant="outline" onClick={() => setModal("changes")} className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50">
                   <MessageSquare size={14} /> Request Changes

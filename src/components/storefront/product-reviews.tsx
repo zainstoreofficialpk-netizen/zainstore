@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Star, ThumbsUp, ChevronDown } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Star, ThumbsUp, ChevronDown, PenLine, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { submitProductReviewAction } from "@/lib/customer/review-actions";
 
 export type ReviewData = {
   id: string;
@@ -18,10 +20,14 @@ export function ProductReviews({
   reviews,
   avgRating,
   totalCount,
+  productId,
+  isLoggedIn,
 }: {
   reviews: ReviewData[];
   avgRating: number;
   totalCount: number;
+  productId: string;
+  isLoggedIn: boolean;
 }) {
   const [shown, setShown] = useState(4);
 
@@ -110,7 +116,139 @@ export function ProductReviews({
           )}
         </div>
       )}
+
+      {/* Write a review */}
+      <div className="border-t border-zinc-100 p-5 md:p-6">
+        <WriteReviewForm productId={productId} isLoggedIn={isLoggedIn} />
+      </div>
     </div>
+  );
+}
+
+function WriteReviewForm({ productId, isLoggedIn }: { productId: string; isLoggedIn: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [title, setTitle] = useState("");
+  const [comment, setComment] = useState("");
+  const [done, setDone] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  if (done) {
+    return (
+      <div className="text-center py-2">
+        <p className="text-sm text-emerald-600 font-semibold">Thank you — your review has been submitted!</p>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <p className="text-sm text-zinc-500 text-center">
+        <a href="/login" className="text-brand-600 font-semibold hover:underline">Log in</a> to write a review.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full py-3 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-600 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center gap-2 transition-colors"
+      >
+        <PenLine className="h-4 w-4" /> Write a Review
+      </button>
+    );
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (rating === 0) { toast.error("Please select a star rating."); return; }
+    if (comment.length < 10) { toast.error("Review must be at least 10 characters."); return; }
+    startTransition(async () => {
+      const result = await submitProductReviewAction({ productId, rating, title: title || undefined, comment });
+      if (result.success) {
+        toast.success(result.message);
+        setDone(true);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <h3 className="text-sm font-bold text-zinc-800 flex items-center gap-2">
+        <PenLine className="h-4 w-4 text-brand-500" /> Write a Review
+      </h3>
+
+      {/* Star picker */}
+      <div>
+        <p className="text-xs text-zinc-500 mb-1.5">Your rating *</p>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onMouseEnter={() => setHover(s)}
+              onMouseLeave={() => setHover(0)}
+              onClick={() => setRating(s)}
+            >
+              <Star
+                className={`h-6 w-6 transition-colors ${
+                  s <= (hover || rating) ? "fill-yellow-400 text-yellow-400" : "fill-zinc-200 text-zinc-200"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Title */}
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Review title (optional)</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={120}
+          placeholder="Summarise your experience"
+          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20"
+        />
+      </div>
+
+      {/* Comment */}
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Your review *</label>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          rows={4}
+          minLength={10}
+          maxLength={2000}
+          placeholder="Share your honest experience with this product…"
+          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20 resize-none"
+        />
+        <p className="text-xs text-zinc-400 mt-1">Only verified buyers can publish reviews.</p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors"
+        >
+          {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : "Submit Review"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

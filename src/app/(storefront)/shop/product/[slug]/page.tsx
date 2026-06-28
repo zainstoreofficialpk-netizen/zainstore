@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductInfo } from "@/components/storefront/product-info";
@@ -82,6 +84,9 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  const session = await getServerSession(authOptions);
+  const isLoggedIn = !!session?.user;
 
   const product = await db.product.findUnique({
     where: { slug, status: "ACTIVE" },
@@ -341,6 +346,8 @@ export default async function ProductPage({
               reviews={reviewsData}
               avgRating={avgRating}
               totalCount={product.reviews.length}
+              productId={product.id}
+              isLoggedIn={isLoggedIn}
             />
           </div>
 
