@@ -315,7 +315,7 @@ export default async function ProductPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 mb-8">
           {/* Gallery */}
           <div>
-            <ProductGallery images={galleryImages} productName={product.name} />
+            <ProductGallery images={galleryImages} productName={product.name} videoUrl={product.videoUrl} />
           </div>
 
           {/* Info + Vendor */}
