@@ -63,6 +63,7 @@ type RawProduct = {
   images: { url: string }[];
   store: { id: string; name: string; slug: string } | null;
   reviews: { rating: number }[];
+  _count: { orderItems: number };
 };
 
 function toCard(p: RawProduct): ProductCardData {
@@ -82,6 +83,7 @@ function toCard(p: RawProduct): ProductCardData {
     vendorId: p.vendorId ?? null,
     rating: avg,
     reviewCount: ratings.length,
+    soldCount: p._count.orderItems,
   };
 }
 
@@ -95,6 +97,7 @@ const PRODUCT_SELECT = {
   images: { take: 1, select: { url: true }, orderBy: { sortOrder: "asc" as const } },
   store: { select: { id: true, name: true, slug: true } },
   reviews: { where: { status: "APPROVED" as const }, select: { rating: true } },
+  _count: { select: { orderItems: true } },
 } as const;
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {

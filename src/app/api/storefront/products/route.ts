@@ -59,6 +59,7 @@ export async function GET(req: Request) {
           images:   { take: 1, select: { url: true }, orderBy: { sortOrder: "asc" as const } },
           store:    { select: { id: true, name: true, slug: true } },
           reviews:  { where: { status: "APPROVED" as const }, select: { rating: true } },
+          _count:   { select: { orderItems: true } },
         },
       }),
       db.product.count({ where }),
@@ -80,6 +81,7 @@ export async function GET(req: Request) {
         brandName: p.brand?.name ?? null,
         rating: avg,
         reviewCount: ratings.length,
+        soldCount: p._count.orderItems,
         inStock: p.stockStatus === "IN_STOCK",
         featured: p.featured,
       };

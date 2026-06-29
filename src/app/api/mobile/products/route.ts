@@ -44,6 +44,7 @@ export async function GET(req: Request) {
           category: { select: { id: true, name: true, slug: true } },
           brand:    { select: { id: true, name: true } },
           reviews:  { where: { status: "APPROVED" }, select: { rating: true } },
+          _count:   { select: { orderItems: true } },
         },
       }),
       db.product.count({ where }),
@@ -70,6 +71,7 @@ export async function GET(req: Request) {
         brand: p.brand ? { name: p.brand.name } : null,
         rating: Math.round(avg * 10) / 10,
         reviewCount: ratings.length,
+        soldCount: p._count.orderItems,
       };
     });
 

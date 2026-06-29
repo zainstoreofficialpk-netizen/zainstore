@@ -22,6 +22,7 @@ export type ProductCardData = {
   vendorId: string | null;
   rating: number;
   reviewCount: number;
+  soldCount?: number;
 };
 
 // ─── Stars ────────────────────────────────────────────────────
@@ -174,6 +175,13 @@ export function ProductCard({
             <Stars rating={product.rating} />
             {product.reviewCount > 0 && (
               <span className="text-[10px] text-zinc-400">({product.reviewCount})</span>
+            )}
+            {(product.soldCount ?? 0) > 0 && (
+              <span className="ml-auto text-[10px] font-semibold text-zinc-400">
+                {product.soldCount! >= 1000
+                  ? `${(product.soldCount! / 1000).toFixed(1)}k sold`
+                  : `${product.soldCount} sold`}
+              </span>
             )}
           </div>
         )}
