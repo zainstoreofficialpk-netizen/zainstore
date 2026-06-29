@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getMobileUser } from "@/lib/mobile/jwt";
 import { OrderSource } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 function generateOrderNumber() {
   const ts = Date.now().toString(36).toUpperCase();
@@ -9,14 +10,39 @@ function generateOrderNumber() {
   return `ZS-${ts}-${rand}`;
 }
 
-// ── POST /api/mobile/orders — place a new order ───────────────────────────────
+// Find or create a guest user so guest orders satisfy the customerId FK
+async function resolveGuestUser(phone: string, name: string, email?: string) {
+  const guestEmail = email?.trim() || `guest_${phone.replace(/\D/g, "")}@guest.zainstore.pk`;
+
+  const existing = await db.user.findFirst({
+    where: { OR: [{ email: guestEmail }, { phone: phone.trim() }] },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const hashed = await bcrypt.hash(Math.random().toString(36), 8);
+  const created = await db.user.create({
+    data: {
+      name: name.trim(),
+      email: guestEmail,
+      phone: phone.trim(),
+      hashedPassword: hashed,
+      role: "CUSTOMER",
+      emailVerified: null,
+    } as any,
+    select: { id: true },
+  });
+  return created.id;
+}
+
+// ── POST /api/mobile/orders — place a new order (auth optional for guests) ───
 
 export async function POST(req: Request) {
-  const user = await getMobileUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const authedUser = await getMobileUser(req);
 
   try {
-    const { shippingName, shippingPhone, shippingAddress, shippingCity, notes, items } = await req.json();
+    const body = await req.json();
+    const { shippingName, shippingPhone, shippingEmail, shippingAddress, shippingCity, notes, items } = body;
 
     if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
       return NextResponse.json({ error: "Delivery information is required." }, { status: 400 });
@@ -24,6 +50,11 @@ export async function POST(req: Request) {
     if (!items || items.length === 0) {
       return NextResponse.json({ error: "Order must have at least one item." }, { status: 400 });
     }
+
+    // Use logged-in user or resolve/create a guest user
+    const customerId = authedUser
+      ? authedUser.id
+      : await resolveGuestUser(shippingPhone, shippingName, shippingEmail);
 
     // Verify all products exist and are in stock
     const productIds: string[] = items.map((i: any) => i.productId);
@@ -39,7 +70,7 @@ export async function POST(req: Request) {
     // Create shipping address record
     const address = await db.address.create({
       data: {
-        userId: user.id,
+        userId: customerId,
         label: "Mobile Order",
         line1: `${shippingName} — ${shippingPhone} — ${shippingAddress}`,
         city: shippingCity,
@@ -54,7 +85,7 @@ export async function POST(req: Request) {
     const order = await db.order.create({
       data: {
         orderNumber: generateOrderNumber(),
-        customerId: user.id,
+        customerId,
         shippingAddressId: address.id,
         status: "PENDING",
         paymentStatus: "PENDING",
@@ -88,7 +119,6 @@ export async function POST(req: Request) {
       select: { id: true, orderNumber: true },
     });
 
-    // Decrement stock for each product
     for (const item of items) {
       await db.product.update({
         where: { id: item.productId },
