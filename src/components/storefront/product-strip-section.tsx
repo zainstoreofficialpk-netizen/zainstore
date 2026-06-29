@@ -1,20 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight, Sparkles, TrendingUp } from "lucide-react";
 import { ProductCard, type ProductCardData } from "./product-card";
+
+type Variant = "new-arrivals" | "popular";
+
+const VARIANT_CONFIG: Record<Variant, { Icon: React.ElementType; iconBg: string }> = {
+  "new-arrivals": { Icon: Sparkles,   iconBg: "bg-brand-50 text-brand-500"  },
+  "popular":      { Icon: TrendingUp, iconBg: "bg-violet-50 text-violet-600" },
+};
 
 type Props = {
   title: string;
   subtitle: string;
-  icon: LucideIcon;
-  iconBg: string;
+  variant: Variant;
   products: ProductCardData[];
   seeAllHref: string;
 };
 
-export function ProductStripSection({ title, subtitle, icon: Icon, iconBg, products, seeAllHref }: Props) {
+export function ProductStripSection({ title, subtitle, variant, products, seeAllHref }: Props) {
   if (products.length === 0) return null;
+
+  const { Icon, iconBg } = VARIANT_CONFIG[variant];
 
   return (
     <section className="container mx-auto px-4 max-w-7xl py-6">

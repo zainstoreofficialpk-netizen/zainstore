@@ -30,7 +30,6 @@ import { ProductStripSection } from "@/components/storefront/product-strip-secti
 import { getFeaturedStores } from "@/lib/storefront/store-data";
 import { HomepageVendorSection } from "@/components/storefront/homepage-vendor-section";
 import type { ProductCardData } from "@/components/storefront/product-card";
-import { TrendingUp } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "ZainStore.pk — Shop Online in Pakistan | Best Deals on Electronics, Fashion & More",
@@ -291,8 +290,7 @@ export default async function ShopHomePage() {
       <ProductStripSection
         title="New Arrivals"
         subtitle="Just Added"
-        icon={Sparkles}
-        iconBg="bg-brand-50 text-brand-500"
+        variant="new-arrivals"
         products={newArrivals}
         seeAllHref="/shop?sort=newest"
       />
@@ -301,8 +299,7 @@ export default async function ShopHomePage() {
       <ProductStripSection
         title="Popular Right Now"
         subtitle="Trending"
-        icon={TrendingUp}
-        iconBg="bg-violet-50 text-violet-600"
+        variant="popular"
         products={popularProducts}
         seeAllHref="/shop?sort=popular"
       />
