@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, Clock, TrendingUp, ArrowRight } from "lucide-react";
+import { Search, X, Clock, Tag, ArrowRight } from "lucide-react";
 
-const TRENDING = ["Summer Sale", "iPhone", "Smart TV", "Sneakers", "Laptop", "Perfume"];
 const STORAGE_KEY = "zs_recent_searches";
 
 type SearchResult = {
@@ -29,10 +28,18 @@ export function SearchBar() {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
+  const [popularCats, setPopularCats] = useState<{ id: string; name: string; slug: string }[]>([]);
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setRecent(getRecent()); }, []);
+
+  useEffect(() => {
+    fetch("/api/storefront/categories?limit=8")
+      .then((r) => r.json())
+      .then((d) => setPopularCats((Array.isArray(d) ? d : d.categories ?? []).slice(0, 8)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -112,21 +119,23 @@ export function SearchBar() {
                   ))}
                 </div>
               )}
-              <div>
-                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Trending</p>
-                <div className="flex flex-wrap gap-2">
-                  {TRENDING.map((term) => (
-                    <button
-                      key={term}
-                      onClick={() => go(term)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 hover:bg-brand-50 text-zinc-700 hover:text-brand-600 text-xs rounded-full border border-zinc-100 hover:border-brand-200 transition-colors"
-                    >
-                      <TrendingUp className="h-3 w-3" />
-                      {term}
-                    </button>
-                  ))}
+              {popularCats.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Popular Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {popularCats.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => go(cat.name)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 hover:bg-brand-50 text-zinc-700 hover:text-brand-600 text-xs rounded-full border border-zinc-100 hover:border-brand-200 transition-colors"
+                      >
+                        <Tag className="h-3 w-3" />
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
