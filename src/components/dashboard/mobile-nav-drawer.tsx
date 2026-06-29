@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Store } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { adminNavigation, vendorNavigation, customerNavigation } from "@/config/navigation";
@@ -38,36 +39,33 @@ export function MobileNavDrawer({ portal }: Props) {
   const items = navMap[portal];
   const navTitle = titleMap[portal];
 
-  return (
+  const drawerContent = (
     <>
-      {/* Hamburger button — only visible on mobile */}
-      <button
-        onClick={() => setOpen(true)}
-        className="lg:hidden -ml-1 flex h-9 w-9 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 transition-colors"
-        aria-label="Open menu"
-      >
-        <Menu size={21} />
-      </button>
-
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 lg:hidden"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9998 }}
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {/* Backdrop — renders to body via portal, no stacking context issues */}
+      <div
+        onClick={() => setOpen(false)}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9998,
+          backgroundColor: open ? "rgba(0,0,0,0.5)" : "transparent",
+          pointerEvents: open ? "auto" : "none",
+          transition: "background-color 0.3s",
+        }}
+      />
 
       {/* Drawer */}
       <div
-        className={cn(
-          "fixed inset-y-0 left-0 w-72 shadow-2xl transition-transform duration-300 lg:hidden",
-          open ? "translate-x-0" : "-translate-x-full",
-        )}
-        style={{ backgroundColor: "#ffffff", zIndex: 9999 }}
+        style={{
+          position: "fixed", top: 0, left: 0, bottom: 0,
+          width: 288, zIndex: 9999,
+          backgroundColor: "#ffffff",
+          boxShadow: "4px 0 24px rgba(0,0,0,0.18)",
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s ease",
+          display: "flex", flexDirection: "column",
+        }}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-zinc-100 px-4">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-100 px-4">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="ZainStore.pk" className="h-9 w-9 object-contain shrink-0" />
@@ -86,7 +84,7 @@ export function MobileNavDrawer({ portal }: Props) {
         </div>
 
         {/* Nav items */}
-        <nav className="space-y-0.5 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 64px)" }}>
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {items.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -116,6 +114,22 @@ export function MobileNavDrawer({ portal }: Props) {
           })}
         </nav>
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Hamburger button — stays in topbar flow */}
+      <button
+        onClick={() => setOpen(true)}
+        className="lg:hidden -ml-1 flex h-9 w-9 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 transition-colors"
+        aria-label="Open menu"
+      >
+        <Menu size={21} />
+      </button>
+
+      {/* Portal renders drawer directly into document.body — bypasses all stacking contexts */}
+      {typeof document !== "undefined" && createPortal(drawerContent, document.body)}
     </>
   );
 }
