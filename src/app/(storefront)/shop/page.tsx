@@ -26,9 +26,11 @@ import { db } from "@/lib/db";
 import { HeroSection } from "@/components/storefront/hero-section";
 import { FlashDeals } from "@/components/storefront/flash-deals";
 import { AllProductsSection } from "@/components/storefront/all-products-section";
+import { ProductStripSection } from "@/components/storefront/product-strip-section";
 import { getFeaturedStores } from "@/lib/storefront/store-data";
 import { HomepageVendorSection } from "@/components/storefront/homepage-vendor-section";
 import type { ProductCardData } from "@/components/storefront/product-card";
+import { TrendingUp } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "ZainStore.pk — Shop Online in Pakistan | Best Deals on Electronics, Fashion & More",
@@ -148,6 +150,8 @@ export default async function ShopHomePage() {
     sliderBanners,
     allCategories,
     flashDealsRaw,
+    newArrivalsRaw,
+    popularRaw,
     initialProductsRaw,
     totalProducts,
   ] = await Promise.all([
@@ -184,6 +188,22 @@ export default async function ShopHomePage() {
       select: PRODUCT_SELECT,
     }),
 
+    // New Arrivals — 12 newest
+    db.product.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: PRODUCT_SELECT,
+    }),
+
+    // Popular — 12 most viewed
+    db.product.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { viewCount: "desc" },
+      take: 12,
+      select: PRODUCT_SELECT,
+    }),
+
     // Initial products batch (page 1)
     db.product.findMany({
       where: { status: "ACTIVE" },
@@ -198,6 +218,8 @@ export default async function ShopHomePage() {
   ]);
 
   const flashDeals = flashDealsRaw.map(toCard);
+  const newArrivals = newArrivalsRaw.map(toCard);
+  const popularProducts = popularRaw.map(toCard);
   const initialProducts = initialProductsRaw.map(toCard);
 
   const heroCategories = allCategories.map((c) => ({
@@ -264,6 +286,26 @@ export default async function ShopHomePage() {
 
       {/* ─── Flash Deals ─── */}
       <FlashDeals products={flashDeals} />
+
+      {/* ─── New Arrivals ─── */}
+      <ProductStripSection
+        title="New Arrivals"
+        subtitle="Just Added"
+        icon={Sparkles}
+        iconBg="bg-brand-50 text-brand-500"
+        products={newArrivals}
+        seeAllHref="/shop?sort=newest"
+      />
+
+      {/* ─── Popular Products ─── */}
+      <ProductStripSection
+        title="Popular Right Now"
+        subtitle="Trending"
+        icon={TrendingUp}
+        iconBg="bg-violet-50 text-violet-600"
+        products={popularProducts}
+        seeAllHref="/shop?sort=popular"
+      />
 
       {/* ─── All Products with Load More ─── */}
       <AllProductsSection initialProducts={initialProducts} total={totalProducts} />
