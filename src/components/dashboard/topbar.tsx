@@ -6,8 +6,13 @@ import { ProfileDropdown } from "@/components/dashboard/profile-dropdown";
 import { AdminNotificationBell } from "@/components/dashboard/admin-notification-bell";
 import { VendorNotificationBell } from "@/components/dashboard/vendor-notification-bell";
 import { CustomerNotificationBell } from "@/components/dashboard/customer-notification-bell";
+import { MobileNavDrawer } from "@/components/dashboard/mobile-nav-drawer";
 
-type TopbarProps = { title: string; subtitle: string };
+type TopbarProps = {
+  title: string;
+  subtitle: string;
+  portal: "admin" | "vendor" | "customer";
+};
 
 function profileHref(role?: string) {
   if (role === "SUPER_ADMIN") return "/admin/profile";
@@ -15,16 +20,19 @@ function profileHref(role?: string) {
   return "/customer/profile";
 }
 
-export async function Topbar({ title, subtitle }: TopbarProps) {
+export async function Topbar({ title, subtitle, portal }: TopbarProps) {
   const session = await getServerSession(authOptions);
   const user = session?.user;
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur">
       <div className="flex min-h-16 items-center justify-between gap-4 px-4 lg:px-6">
-        <div className="min-w-0">
-          <h1 className="truncate text-base font-bold text-zinc-950">{title}</h1>
-          <p className="truncate text-xs text-zinc-400">{subtitle}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <MobileNavDrawer portal={portal} />
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-bold text-zinc-950">{title}</h1>
+            <p className="truncate text-xs text-zinc-400 hidden sm:block">{subtitle}</p>
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
