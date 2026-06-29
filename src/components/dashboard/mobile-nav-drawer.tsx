@@ -52,7 +52,8 @@ export function MobileNavDrawer({ portal }: Props) {
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 lg:hidden"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9998 }}
           onClick={() => setOpen(false)}
         />
       )}
@@ -60,9 +61,10 @@ export function MobileNavDrawer({ portal }: Props) {
       {/* Drawer */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 w-72 shadow-2xl transition-transform duration-300 lg:hidden",
           open ? "translate-x-0" : "-translate-x-full",
         )}
+        style={{ backgroundColor: "#ffffff", zIndex: 9999 }}
       >
         {/* Header */}
         <div className="flex h-16 items-center justify-between border-b border-zinc-100 px-4">
