@@ -183,8 +183,8 @@ export default async function AdminOrdersPage({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-0.5">
-                          <OrderSourceBadge source={order.orderSource} />
-                          {order.sourceReference && (
+                          <OrderSourceBadge source={order.orderSource} reference={order.sourceReference} />
+                          {order.sourceReference && order.sourceReference !== "app" && (
                             <span className="font-mono text-[10px] text-zinc-400">#{order.sourceReference}</span>
                           )}
                         </div>

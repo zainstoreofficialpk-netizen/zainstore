@@ -26,7 +26,14 @@ const SOURCE_STYLES: Record<OrderSource, string> = {
   OTHER:     "bg-zinc-100 text-zinc-500",
 };
 
-export function OrderSourceBadge({ source }: { source: OrderSource }) {
+export function OrderSourceBadge({ source, reference }: { source: OrderSource; reference?: string | null }) {
+  if (reference === "app") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium bg-brand-50 text-brand-600 border border-brand-200">
+        📱 App
+      </span>
+    );
+  }
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${SOURCE_STYLES[source]}`}>
       {SOURCE_LABELS[source]}
@@ -63,8 +70,8 @@ export function OrderSourceUpdater({
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
-        <OrderSourceBadge source={currentSource} />
-        {currentReference && (
+        <OrderSourceBadge source={currentSource} reference={currentReference} />
+        {currentReference && currentReference !== "app" && (
           <span className="font-mono text-xs text-zinc-400">#{currentReference}</span>
         )}
         <button

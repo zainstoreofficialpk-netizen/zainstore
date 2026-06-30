@@ -94,7 +94,8 @@ export async function POST(req: Request) {
         discountTotal: 0,
         taxTotal: 0,
         notes: notes || null,
-        orderSource: OrderSource.DIRECT,
+        orderSource: OrderSource.OTHER,
+        sourceReference: "app",
         items: {
           create: items.map((i: any) => {
             const product = products.find((p) => p.id === i.productId)!;
