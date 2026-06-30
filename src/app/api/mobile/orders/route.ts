@@ -26,10 +26,9 @@ async function resolveGuestUser(phone: string, name: string, email?: string) {
       name: name.trim(),
       email: guestEmail,
       phone: phone.trim(),
-      hashedPassword: hashed,
+      passwordHash: hashed,
       role: "CUSTOMER",
-      emailVerified: null,
-    } as any,
+    },
     select: { id: true },
   });
   return created.id;
@@ -127,9 +126,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ orderId: order.id, orderNumber: order.orderNumber }, { status: 201 });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[mobile/orders POST]", e);
-    return NextResponse.json({ error: "Failed to place order." }, { status: 500 });
+    return NextResponse.json({ error: e?.message ?? "Failed to place order." }, { status: 500 });
   }
 }
 
