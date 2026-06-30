@@ -216,7 +216,33 @@ export default async function StorefrontLayout({ children }: { children: React.R
 
             </div>
 
-            <div className="border-t border-zinc-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-600">
+            {/* ── Download App banner ── */}
+            <div className="border-t border-zinc-800 mt-8 pt-8 pb-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-800 rounded-2xl px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-brand-500 flex items-center justify-center shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo-icon.svg" alt="ZainStore" className="h-7 w-7 object-contain" />
+                  </div>
+                  <div>
+                    <p className="text-white font-black text-sm">Get the ZainStore App</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">Shop faster · Track orders · Exclusive app deals</p>
+                  </div>
+                </div>
+                <a
+                  href="/zainstore-app.apk"
+                  download
+                  className="flex items-center gap-2.5 bg-white hover:bg-zinc-100 text-zinc-900 font-black text-sm px-5 py-3 rounded-xl transition-colors shrink-0 shadow-sm"
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#3DDC84]" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.523 15.341 13 9.64V4h1a1 1 0 0 0 0-2H10a1 1 0 0 0 0 2h1v5.64l-4.523 5.701A1 1 0 0 0 7.24 17H10v3a1 1 0 0 0 2 0v-3h2.76a1 1 0 0 0 .763-1.659Z"/>
+                  </svg>
+                  Download for Android
+                </a>
+              </div>
+            </div>
+
+            <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-600">
               <p>© {new Date().getFullYear()} ZainStore.pk — All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link href="/shop/privacy" className="hover:text-zinc-400 transition-colors">Privacy Policy</Link>
@@ -250,6 +276,18 @@ export default async function StorefrontLayout({ children }: { children: React.R
               </Link>
             ))}
           </div>
+
+          {/* App download — mobile */}
+          <a
+            href="/zainstore-app.apk"
+            download
+            className="flex items-center justify-center gap-2 w-full bg-brand-500 hover:bg-brand-600 text-white font-black text-sm py-3 rounded-xl mb-4 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.523 15.341 13 9.64V4h1a1 1 0 0 0 0-2H10a1 1 0 0 0 0 2h1v5.64l-4.523 5.701A1 1 0 0 0 7.24 17H10v3a1 1 0 0 0 2 0v-3h2.76a1 1 0 0 0 .763-1.659Z"/>
+            </svg>
+            Download Android App
+          </a>
 
           <div className="border-t border-zinc-800 pt-3 flex items-center justify-between text-[10px] text-zinc-600">
             <p>© {new Date().getFullYear()} ZainStore.pk</p>
