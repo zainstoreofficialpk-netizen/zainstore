@@ -7,6 +7,7 @@ import { StorefrontHeader } from "@/components/storefront/storefront-header";
 import { StorefrontProviders } from "@/components/storefront/storefront-providers";
 import { VisitorTracker } from "@/components/shared/visitor-tracker";
 import { UtmTracker } from "@/components/shared/utm-tracker";
+import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zainstore.pk"),
@@ -127,6 +128,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
         wishlistCount={wishlistCount}
       />
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      <WhatsAppButton />
       <footer className="bg-zinc-900 text-zinc-400 mt-auto">
 
         {/* ── Desktop footer ── */}
