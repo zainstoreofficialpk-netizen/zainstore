@@ -58,6 +58,7 @@ export type ProductFormData = {
     price: string;
     salePrice: string;
     stock: string;
+    stockStatus: string;
     imageUrl: string;
     options: Record<string, string>;
     isActive: boolean;
@@ -147,6 +148,7 @@ export async function createProductAction(
               price: v.price || null,
               salePrice: v.salePrice || null,
               stock: parseInt(v.stock) || 0,
+              stockStatus: v.stockStatus || "IN_STOCK",
               imageUrl: v.imageUrl || null,
               isActive: v.isActive,
             })),
@@ -263,6 +265,7 @@ export async function updateProductAction(
           price: v.price || null,
           salePrice: v.salePrice || null,
           stock: parseInt(v.stock) || 0,
+          stockStatus: v.stockStatus || "IN_STOCK",
           imageUrl: v.imageUrl || null,
           isActive: v.isActive,
         })),

@@ -86,7 +86,7 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-5 py-2">
               {items.map((item, idx) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${item.variantId ?? ""}`}
                   className={`flex gap-3.5 py-4 ${idx < items.length - 1 ? "border-b border-zinc-100" : ""}`}
                 >
                   {/* Product image */}
@@ -121,9 +121,12 @@ export function CartDrawer() {
                         <p className="text-[13px] font-semibold text-zinc-800 leading-snug line-clamp-2">
                           {item.name}
                         </p>
+                        {item.variantName && (
+                          <p className="text-[11px] text-zinc-400 mt-0.5">{item.variantName}</p>
+                        )}
                       </div>
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item.id, item.variantId)}
                         className="shrink-0 h-6 w-6 rounded-full hover:bg-red-50 flex items-center justify-center text-zinc-300 hover:text-red-400 transition-colors mt-0.5"
                         aria-label={`Remove ${item.name}`}
                       >
@@ -147,7 +150,7 @@ export function CartDrawer() {
                       {/* Quantity stepper */}
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => updateQty(item.id, -1)}
+                          onClick={() => updateQty(item.id, -1, item.variantId)}
                           className="h-7 w-7 rounded-full border border-zinc-200 hover:border-brand-400 hover:bg-brand-50 flex items-center justify-center text-zinc-500 hover:text-brand-600 transition-all duration-150"
                           aria-label="Decrease quantity"
                         >
@@ -157,7 +160,7 @@ export function CartDrawer() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQty(item.id, 1)}
+                          onClick={() => updateQty(item.id, 1, item.variantId)}
                           className="h-7 w-7 rounded-full border border-zinc-200 hover:border-brand-400 hover:bg-brand-50 flex items-center justify-center text-zinc-500 hover:text-brand-600 transition-all duration-150"
                           aria-label="Increase quantity"
                         >

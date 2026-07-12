@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ShoppingCart,
   Zap,
@@ -17,6 +17,8 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useFlyContext } from "./cart-fly-context";
+import { useProductVariant } from "./product-variant-context";
+import { VariantPicker } from "./variant-picker";
 
 export type ProductInfoData = {
   id: string;
@@ -58,17 +60,37 @@ export function ProductInfo({
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
   const flyCtx = useFlyContext();
+  const { selectedVariant, hasVariants } = useProductVariant();
+
+  // Effective values: the selected variant overrides the base product's
+  // price/stock/SKU/image when present; falls back to the base product
+  // for products with no variants (unchanged behavior).
+  const effectivePrice = selectedVariant?.price ?? product.price;
+  const effectiveSalePrice = selectedVariant ? selectedVariant.salePrice : product.salePrice;
+  const effectiveStock = selectedVariant ? selectedVariant.stock : product.stock;
+  const effectiveStockStatus = selectedVariant ? selectedVariant.stockStatus : product.stockStatus;
+  const effectiveSku = selectedVariant?.sku ?? product.sku;
+  const effectiveImage = selectedVariant?.imageUrl ?? product.imageUrl;
 
   const discount =
-    product.salePrice && product.price > 0
-      ? Math.round((1 - product.salePrice / product.price) * 100)
+    effectiveSalePrice && effectivePrice > 0
+      ? Math.round((1 - effectiveSalePrice / effectivePrice) * 100)
       : 0;
-  const displayPrice = product.salePrice ?? product.price;
-  const savings = product.salePrice ? product.price - product.salePrice : 0;
+  const displayPrice = effectiveSalePrice ?? effectivePrice;
+  const savings = effectiveSalePrice ? effectivePrice - effectiveSalePrice : 0;
 
+  // If this product has variants but none matches the current selection
+  // (an incomplete/invalid combination), treat it as not purchasable.
+  const variantSelectionValid = !hasVariants || !!selectedVariant;
   const inStock =
-    product.stockStatus === "IN_STOCK" || (product.stock > 0 && product.stockStatus !== "OUT_OF_STOCK");
-  const lowStock = inStock && product.stock > 0 && product.stock <= product.lowStockThreshold;
+    variantSelectionValid &&
+    (effectiveStockStatus === "IN_STOCK" || (effectiveStock > 0 && effectiveStockStatus !== "OUT_OF_STOCK"));
+  const lowStock = inStock && effectiveStock > 0 && effectiveStock <= product.lowStockThreshold;
+
+  // Clamp quantity if switching to a variant with less stock than currently selected
+  useEffect(() => {
+    setQty((q) => Math.max(1, Math.min(q, effectiveStock || 99)));
+  }, [effectiveStock]);
 
   function handleAddToCart() {
     if (!inStock || added) return;
@@ -78,19 +100,22 @@ export function ProductInfo({
         id: product.id,
         name: product.name,
         slug: product.slug,
-        price: product.price,
-        salePrice: product.salePrice,
-        imageUrl: product.imageUrl,
+        price: effectivePrice,
+        salePrice: effectiveSalePrice,
+        imageUrl: effectiveImage,
         storeName: product.storeName,
         storeId: product.storeId,
         vendorId: product.vendorId,
         weightGrams: product.weight ? Math.round(Number(product.weight)) : 500,
+        variantId: selectedVariant?.id ?? null,
+        variantName: selectedVariant?.name ?? null,
+        sku: effectiveSku,
       });
     }
 
     // Fly from main image if ref provided, else from the button itself
     const src = mainImageRef?.current?.getBoundingClientRect() ?? btnRef.current?.getBoundingClientRect();
-    if (src) flyCtx?.triggerFly(src, product.imageUrl ?? "");
+    if (src) flyCtx?.triggerFly(src, effectiveImage ?? "");
 
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -157,8 +182,8 @@ export function ProductInfo({
       <div>
         <div className="flex items-end gap-3 flex-wrap">
           <span className="text-3xl font-black text-zinc-900">{formatCurrency(displayPrice)}</span>
-          {product.salePrice && (
-            <span className="text-lg text-zinc-400 line-through">{formatCurrency(product.price)}</span>
+          {effectiveSalePrice && (
+            <span className="text-lg text-zinc-400 line-through">{formatCurrency(effectivePrice)}</span>
           )}
           {discount > 0 && (
             <span className="bg-accent-500 text-white text-xs font-black px-2.5 py-1 rounded-full">
@@ -178,19 +203,24 @@ export function ProductInfo({
         <p className="text-sm text-zinc-600 leading-relaxed">{product.shortDescription}</p>
       )}
 
+      {/* Variant picker */}
+      <VariantPicker />
+
       {/* Stock status */}
       <div className="flex items-center gap-2">
         {inStock ? (
           <>
             <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-sm font-medium text-green-700">
-              {lowStock ? `Only ${product.stock} left in stock!` : "In Stock"}
+              {lowStock ? `Only ${effectiveStock} left in stock!` : "In Stock"}
             </span>
           </>
         ) : (
           <>
             <span className="h-2 w-2 rounded-full bg-red-400" />
-            <span className="text-sm font-medium text-red-600">Out of Stock</span>
+            <span className="text-sm font-medium text-red-600">
+              {variantSelectionValid ? "Out of Stock" : "Select a valid combination"}
+            </span>
           </>
         )}
       </div>
@@ -210,8 +240,8 @@ export function ProductInfo({
             </button>
             <span className="w-10 text-center text-sm font-bold text-zinc-800">{qty}</span>
             <button
-              onClick={() => setQty((q) => Math.min(product.stock || 99, q + 1))}
-              disabled={qty >= (product.stock || 99)}
+              onClick={() => setQty((q) => Math.min(effectiveStock || 99, q + 1))}
+              disabled={qty >= (effectiveStock || 99)}
               className="w-9 h-9 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -295,10 +325,10 @@ export function ProductInfo({
       </div>
 
       {/* SKU / Tags */}
-      {(product.sku || product.tags.length > 0) && (
+      {(effectiveSku || product.tags.length > 0) && (
         <div className="flex flex-col gap-1.5 text-xs text-zinc-400 pt-1 border-t border-zinc-100">
-          {product.sku && (
-            <p>SKU: <span className="text-zinc-600 font-mono">{product.sku}</span></p>
+          {effectiveSku && (
+            <p>SKU: <span className="text-zinc-600 font-mono">{effectiveSku}</span></p>
           )}
           {product.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">

@@ -13,7 +13,14 @@ export type CartItem = {
   vendorId: string | null;
   quantity: number;
   weightGrams: number; // product weight in grams, 0 if not set
+  variantId?: string | null;
+  variantName?: string | null;
+  sku?: string | null;
 };
+
+function sameLine(a: { id: string; variantId?: string | null }, b: { id: string; variantId?: string | null }) {
+  return a.id === b.id && (a.variantId ?? null) === (b.variantId ?? null);
+}
 
 type CartStore = {
   items: CartItem[];
@@ -21,8 +28,8 @@ type CartStore = {
   openCart: () => void;
   closeCart: () => void;
   addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (id: string) => void;
-  updateQty: (id: string, delta: number) => void;
+  removeItem: (id: string, variantId?: string | null) => void;
+  updateQty: (id: string, delta: number, variantId?: string | null) => void;
   clearCart: () => void;
 };
 
@@ -35,22 +42,22 @@ export const useCartStore = create<CartStore>()(
       closeCart: () => set({ isOpen: false }),
       addItem: (item) =>
         set((state) => {
-          const hit = state.items.find((i) => i.id === item.id);
+          const hit = state.items.find((i) => sameLine(i, item));
           if (hit) {
             return {
               items: state.items.map((i) =>
-                i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i,
+                sameLine(i, item) ? { ...i, quantity: i.quantity + 1 } : i,
               ),
             };
           }
           return { items: [...state.items, { ...item, quantity: 1 }] };
         }),
-      removeItem: (id) =>
-        set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
-      updateQty: (id, delta) =>
+      removeItem: (id, variantId = null) =>
+        set((state) => ({ items: state.items.filter((i) => !sameLine(i, { id, variantId })) })),
+      updateQty: (id, delta, variantId = null) =>
         set((state) => ({
           items: state.items
-            .map((i) => (i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
+            .map((i) => (sameLine(i, { id, variantId }) ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
             .filter((i) => i.quantity > 0),
         })),
       clearCart: () => set({ items: [] }),

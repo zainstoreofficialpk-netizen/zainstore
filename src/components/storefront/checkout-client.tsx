@@ -380,8 +380,9 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
       paymentMethod: form.paymentMethod,
       items: items.map((item) => ({
         productId: item.id,
-        name: item.name,
-        sku: null,
+        variantId: item.variantId ?? null,
+        name: item.variantName ? `${item.name} (${item.variantName})` : item.name,
+        sku: item.sku ?? null,
         quantity: item.quantity,
         unitPrice: item.salePrice ?? item.price,
         imageUrl: item.imageUrl,

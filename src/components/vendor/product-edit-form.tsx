@@ -48,7 +48,7 @@ type Product = {
   rejectionReason: string | null;
   adminNote: string | null;
   images: { url: string; alt: string | null; sortOrder: number }[];
-  variants: { name: string; sku: string | null; options: any; price: any; salePrice: any; stock: number; imageUrl: string | null; isActive: boolean }[];
+  variants: { name: string; sku: string | null; options: any; price: any; salePrice: any; stock: number; stockStatus: string; imageUrl: string | null; isActive: boolean }[];
 };
 
 function toSlug(str: string) {
@@ -100,6 +100,7 @@ export function ProductEditForm({
       price: String(v.price ?? ""),
       salePrice: String(v.salePrice ?? ""),
       stock: String(v.stock),
+      stockStatus: v.stockStatus ?? "IN_STOCK",
       imageUrl: v.imageUrl ?? "",
       options: (v.options as Record<string, string>) ?? {},
       isActive: v.isActive ?? true,
@@ -119,6 +120,51 @@ export function ProductEditForm({
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingSlot, setPendingSlot] = useState<number | null>(null);
+
+  // ── Variant handlers ─────────────────────────────────────────
+  const [variantImgUploading, setVariantImgUploading] = useState<number | null>(null);
+  const variantFileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingVariantSlot, setPendingVariantSlot] = useState<number | null>(null);
+
+  function updateVariant(i: number, field: string, value: string | boolean) {
+    const updated = [...form.variants];
+    updated[i] = { ...updated[i], [field]: value };
+    setForm({ ...form, variants: updated });
+  }
+
+  function removeVariant(i: number) {
+    setForm({ ...form, variants: form.variants.filter((_, idx) => idx !== i) });
+  }
+
+  async function uploadVariantImage(file: File, index: number) {
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Only JPG, PNG, WEBP or GIF allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB.");
+      return;
+    }
+    setVariantImgUploading(index);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "image");
+      const res = await fetch("/api/vendor/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        updateVariant(index, "imageUrl", data.url);
+        toast.success("Variant image uploaded.");
+      } else {
+        toast.error(data.error ?? "Upload failed.");
+      }
+    } catch {
+      toast.error("Upload failed.");
+    } finally {
+      setVariantImgUploading(null);
+      setPendingVariantSlot(null);
+    }
+  }
 
   async function uploadImage(file: File, slotIndex: number) {
     if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
@@ -363,6 +409,143 @@ export function ProductEditForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* Variants */}
+      {form.variants.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Variants</CardTitle>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              Set a specific image, price, sale price, stock, SKU, and availability for each variation.
+              Customers will see this exact image and price when they select it. To add brand-new
+              variation combinations (e.g. a new color), recreate them from the &ldquo;New Product&rdquo;
+              attribute builder — here you can edit or remove the existing ones.
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Hidden file input for variant images */}
+            <input
+              ref={variantFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && pendingVariantSlot !== null) uploadVariantImage(file, pendingVariantSlot);
+                e.target.value = "";
+              }}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-zinc-100 bg-zinc-50/50">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Image</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">Variant</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">SKU</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Price</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Sale Price</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Stock</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Availability</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Active</th>
+                    <th className="px-3 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {form.variants.map((v, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2.5">
+                        <button
+                          type="button"
+                          title="Click to upload variant image"
+                          onClick={() => { setPendingVariantSlot(i); variantFileInputRef.current?.click(); }}
+                          className="relative size-12 shrink-0 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-50 hover:border-brand-400 transition-colors"
+                        >
+                          {variantImgUploading === i ? (
+                            <span className="flex items-center justify-center h-full">
+                              <Loader2 size={16} className="animate-spin text-brand-500" />
+                            </span>
+                          ) : v.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={v.imageUrl} alt={v.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="flex items-center justify-center h-full">
+                              <Upload size={14} className="text-zinc-400" />
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium text-zinc-800">{v.name}</span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          value={v.sku}
+                          onChange={(e) => updateVariant(i, "sku", e.target.value)}
+                          className="h-8 w-28 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                          placeholder="SKU-001"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="number"
+                          value={v.price}
+                          onChange={(e) => updateVariant(i, "price", e.target.value)}
+                          className="h-8 w-24 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                          placeholder={form.price}
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="number"
+                          value={v.salePrice}
+                          onChange={(e) => updateVariant(i, "salePrice", e.target.value)}
+                          className="h-8 w-24 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={v.stock}
+                          onChange={(e) => updateVariant(i, "stock", e.target.value)}
+                          className="h-8 w-20 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={v.stockStatus}
+                          onChange={(e) => updateVariant(i, "stockStatus", e.target.value)}
+                          className="h-8 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                        >
+                          <option value="IN_STOCK">In Stock</option>
+                          <option value="OUT_OF_STOCK">Out of Stock</option>
+                          <option value="BACKORDER">Backorder</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={v.isActive}
+                          onChange={(e) => updateVariant(i, "isActive", e.target.checked)}
+                          className="size-4 rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(i)}
+                          className="text-zinc-300 hover:text-rose-500 text-lg leading-none"
+                          title="Remove variant"
+                        >×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Weight & Shipping */}
       <Card>

@@ -23,6 +23,30 @@ function toSlug(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+// ── Shared single-image upload helper (used by Step2 gallery and Step5 variants) ──
+
+async function uploadSingleImage(file: File): Promise<string | null> {
+  const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  if (!ALLOWED.includes(file.type)) {
+    toast.error("Only JPG, PNG, or WEBP images allowed.");
+    return null;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error("Image must be under 10 MB.");
+    return null;
+  }
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("type", "image");
+  const res = await fetch("/api/vendor/upload", { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    toast.error(data.error ?? "Upload failed.");
+    return null;
+  }
+  return data.url as string;
+}
+
 // ── Default state ─────────────────────────────────────────────────────────────
 
 const DEFAULT: ProductFormData = {
@@ -583,6 +607,17 @@ function Step5({
   const [attrName, setAttrName] = useState("");
   const [attrValue, setAttrValue] = useState("");
   const [selectedAttrIdx, setSelectedAttrIdx] = useState(0);
+  const [variantImgUploading, setVariantImgUploading] = useState<number | null>(null);
+
+  async function uploadVariantImage(file: File, index: number) {
+    setVariantImgUploading(index);
+    try {
+      const url = await uploadSingleImage(file);
+      if (url) updateVariant(index, "imageUrl", url);
+    } finally {
+      setVariantImgUploading(null);
+    }
+  }
 
   function addAttribute() {
     if (!attrName.trim()) return;
@@ -632,6 +667,7 @@ function Step5({
         price: form.price,
         salePrice: form.salePrice,
         stock: "0",
+        stockStatus: "IN_STOCK",
         imageUrl: "",
         options,
         isActive: true,
@@ -750,24 +786,63 @@ function Step5({
         <Card>
           <CardHeader>
             <CardTitle>{form.variants.length} Variant Combinations</CardTitle>
-            <p className="mt-0.5 text-xs text-zinc-400">Set SKU, price, and stock for each combination.</p>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              Set an image, SKU, price, stock, and availability for each combination. Customers will see this
+              exact image and price when they select this variant on the product page.
+            </p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-100 bg-zinc-50/50">
                   <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Image</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">Variant</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">SKU</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Price</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Sale Price</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Stock</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Availability</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-zinc-500">Active</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
                   {form.variants.map((v, i) => (
                     <tr key={i}>
+                      <td className="px-3 py-2.5">
+                        <div
+                          className={`relative flex size-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 transition-colors
+                            ${v.imageUrl ? "border-zinc-200" : "border-dashed border-zinc-200 hover:border-brand-300"}
+                            ${variantImgUploading === i ? "opacity-60" : ""}`}
+                          onClick={() => {
+                            const el = document.createElement("input");
+                            el.type = "file";
+                            el.accept = "image/jpeg,image/png,image/webp";
+                            el.onchange = (ev) => {
+                              const file = (ev.target as HTMLInputElement).files?.[0];
+                              if (file) uploadVariantImage(file, i);
+                            };
+                            el.click();
+                          }}
+                        >
+                          {v.imageUrl ? (
+                            <>
+                              <img src={v.imageUrl} alt={v.name} className="absolute inset-0 h-full w-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); updateVariant(i, "imageUrl", ""); }}
+                                className="absolute right-0 top-0 grid size-4 place-items-center rounded-bl bg-black/60 text-white hover:bg-rose-500"
+                              >
+                                <X size={9} />
+                              </button>
+                            </>
+                          ) : variantImgUploading === i ? (
+                            <div className="size-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" />
+                          ) : (
+                            <Upload size={14} className="text-zinc-300" />
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className="font-medium text-zinc-800">{v.name}</span>
                       </td>
@@ -806,6 +881,17 @@ function Step5({
                         />
                       </td>
                       <td className="px-3 py-2.5">
+                        <select
+                          value={v.stockStatus}
+                          onChange={(e) => updateVariant(i, "stockStatus", e.target.value)}
+                          className="h-8 rounded border border-zinc-200 px-2 text-xs focus:border-brand-400 focus:outline-none"
+                        >
+                          <option value="IN_STOCK">In Stock</option>
+                          <option value="OUT_OF_STOCK">Out of Stock</option>
+                          <option value="BACKORDER">Backorder</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-2.5">
                         <input
                           type="checkbox"
                           checked={v.isActive}
@@ -817,6 +903,13 @@ function Step5({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="flex items-start gap-2 px-4 py-3 border-t border-zinc-50 bg-zinc-50/50">
+              <Info size={13} className="mt-0.5 shrink-0 text-zinc-400" />
+              <p className="text-xs text-zinc-500">
+                If you don&apos;t upload an image for a variant, customers will see the product&apos;s main image
+                (from the Media step) when they select it.
+              </p>
             </div>
           </CardContent>
         </Card>

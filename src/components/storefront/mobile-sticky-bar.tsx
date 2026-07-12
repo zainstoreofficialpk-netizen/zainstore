@@ -5,6 +5,7 @@ import { ShoppingCart, Zap } from "lucide-react";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useFlyContext } from "./cart-fly-context";
 import { formatCurrency } from "@/lib/format";
+import { useProductVariant } from "./product-variant-context";
 
 export function MobileStickyBar({
   product,
@@ -29,6 +30,17 @@ export function MobileStickyBar({
   const openCart = useCartStore((s) => s.openCart);
   const flyCtx = useFlyContext();
   const buyBtnRef = useRef<HTMLButtonElement>(null);
+  const { selectedVariant, hasVariants } = useProductVariant();
+
+  const effectivePrice = selectedVariant?.price ?? product.price;
+  const effectiveSalePrice = selectedVariant ? selectedVariant.salePrice : product.salePrice;
+  const effectiveImage = selectedVariant?.imageUrl ?? product.imageUrl;
+  const effectiveInStock =
+    product.inStock &&
+    (!hasVariants ||
+      (!!selectedVariant &&
+        (selectedVariant.stockStatus === "IN_STOCK" ||
+          (selectedVariant.stock > 0 && selectedVariant.stockStatus !== "OUT_OF_STOCK"))));
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -43,20 +55,24 @@ export function MobileStickyBar({
   }, []);
 
   function handleAddToCart() {
+    if (!effectiveInStock) return;
     addItem({
       id: product.id,
       name: product.name,
       slug: product.slug,
-      price: product.price,
-      salePrice: product.salePrice,
-      imageUrl: product.imageUrl,
+      price: effectivePrice,
+      salePrice: effectiveSalePrice,
+      imageUrl: effectiveImage,
       storeName: product.storeName,
       storeId: product.storeId,
       vendorId: product.vendorId,
       weightGrams: 500,
+      variantId: selectedVariant?.id ?? null,
+      variantName: selectedVariant?.name ?? null,
+      sku: selectedVariant?.sku ?? null,
     });
     if (buyBtnRef.current) {
-      flyCtx?.triggerFly(buyBtnRef.current.getBoundingClientRect(), product.imageUrl ?? "");
+      flyCtx?.triggerFly(buyBtnRef.current.getBoundingClientRect(), effectiveImage ?? "");
     }
   }
 
@@ -65,7 +81,7 @@ export function MobileStickyBar({
     setTimeout(() => openCart(), 100);
   }
 
-  const displayPrice = product.salePrice ?? product.price;
+  const displayPrice = effectiveSalePrice ?? effectivePrice;
 
   return (
     <>
@@ -87,7 +103,7 @@ export function MobileStickyBar({
         {/* Add to Cart */}
         <button
           onClick={handleAddToCart}
-          disabled={!product.inStock}
+          disabled={!effectiveInStock}
           className="h-11 px-4 rounded-xl bg-zinc-900 text-white text-sm font-black flex items-center gap-1.5 shrink-0 disabled:opacity-40"
         >
           <ShoppingCart className="h-4 w-4" />
@@ -98,7 +114,7 @@ export function MobileStickyBar({
         <button
           ref={buyBtnRef}
           onClick={handleBuyNow}
-          disabled={!product.inStock}
+          disabled={!effectiveInStock}
           className="h-11 px-4 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-sm font-black flex items-center gap-1.5 shrink-0 disabled:opacity-40 shadow-lg shadow-accent-200"
         >
           <Zap className="h-4 w-4" />

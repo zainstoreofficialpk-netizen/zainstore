@@ -11,6 +11,7 @@ import { OrderSource } from "@prisma/client";
 
 export type CheckoutItem = {
   productId: string;
+  variantId?: string | null;
   name: string;
   sku: string | null;
   quantity: number;
@@ -219,10 +220,30 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    // Resolve variants for any items that selected one (per-variant stock is
+    // authoritative over the base product's aggregate stock when present)
+    const variantIds = input.items.map((i) => i.variantId).filter((v): v is string => !!v);
+    const variants = variantIds.length
+      ? await db.productVariant.findMany({
+          where: { id: { in: variantIds } },
+          select: { id: true, productId: true, stock: true, isActive: true },
+        })
+      : [];
+    const variantMap = new Map(variants.map((v) => [v.id, v]));
+
     for (const item of input.items) {
       const p = productMap.get(item.productId);
       if (!p) return { success: false, error: `Product "${item.name}" is no longer available` };
-      if (p.trackInventory && p.stock < item.quantity) {
+
+      if (item.variantId) {
+        const v = variantMap.get(item.variantId);
+        if (!v || !v.isActive || v.productId !== item.productId) {
+          return { success: false, error: `"${item.name}" is no longer available` };
+        }
+        if (p.trackInventory && v.stock < item.quantity) {
+          return { success: false, error: `Not enough stock for "${item.name}"` };
+        }
+      } else if (p.trackInventory && p.stock < item.quantity) {
         return { success: false, error: `Not enough stock for "${item.name}"` };
       }
     }
@@ -298,6 +319,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
             return {
               productId: item.productId,
+              variantId: item.variantId ?? null,
               vendorId: p.vendorId,
               name: item.name,
               sku: item.sku,
@@ -327,6 +349,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       input.items.map((item) => {
         const p = productMap.get(item.productId)!;
         if (!p.trackInventory) return Promise.resolve();
+        // Variant-level stock is authoritative when a variant was selected;
+        // the base product's aggregate stock is left untouched in that case.
+        if (item.variantId) {
+          return db.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
         return db.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },

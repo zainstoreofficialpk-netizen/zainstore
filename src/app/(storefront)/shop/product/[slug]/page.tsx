@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { db } from "@/lib/db";
-import { ProductGallery } from "@/components/storefront/product-gallery";
+import { ProductGalleryWithVariant } from "@/components/storefront/product-gallery-with-variant";
 import { ProductInfo } from "@/components/storefront/product-info";
+import { ProductVariantProvider, type VariantData } from "@/components/storefront/product-variant-context";
 import { ProductDetailTabs } from "@/components/storefront/product-detail-tabs";
 import { ProductReviews } from "@/components/storefront/product-reviews";
 import { VendorStoreCard } from "@/components/storefront/vendor-store-card";
@@ -92,6 +93,7 @@ export default async function ProductPage({
     where: { slug, status: "ACTIVE" },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
+      variants: { orderBy: { createdAt: "asc" } },
       category: { select: { id: true, name: true, slug: true } },
       brand: { select: { id: true, name: true, slug: true } },
       store: {
@@ -140,6 +142,19 @@ export default async function ProductPage({
   const price = Number(product.price);
   const salePrice = product.salePrice ? Number(product.salePrice) : null;
   const firstImage = product.images[0]?.url ?? null;
+
+  const variantsData: VariantData[] = product.variants.map((v) => ({
+    id: v.id,
+    name: v.name,
+    sku: v.sku,
+    options: (v.options as Record<string, string>) ?? {},
+    price: v.price ? Number(v.price) : null,
+    salePrice: v.salePrice ? Number(v.salePrice) : null,
+    stock: v.stock,
+    stockStatus: v.stockStatus,
+    imageUrl: v.imageUrl,
+    isActive: v.isActive,
+  }));
 
   const avgRating =
     product.reviews.length > 0
@@ -284,6 +299,7 @@ export default async function ProductPage({
   };
 
   return (
+    <ProductVariantProvider variants={variantsData}>
     <div className="bg-zinc-50 min-h-screen pb-24 md:pb-12">
       {/* JSON-LD structured data */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
@@ -320,7 +336,7 @@ export default async function ProductPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 mb-8">
           {/* Gallery */}
           <div>
-            <ProductGallery images={galleryImages} productName={product.name} videoUrl={product.videoUrl} />
+            <ProductGalleryWithVariant images={galleryImages} productName={product.name} videoUrl={product.videoUrl} />
           </div>
 
           {/* Info + Vendor */}
@@ -429,5 +445,6 @@ export default async function ProductPage({
         }}
       />
     </div>
+    </ProductVariantProvider>
   );
 }
