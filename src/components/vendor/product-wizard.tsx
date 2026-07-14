@@ -1142,6 +1142,8 @@ export function ProductWizard({
     if (form.salePrice && parseFloat(form.salePrice) >= parseFloat(form.price))
       return "Sale price must be lower than regular price.";
     if (!form.weight || parseInt(form.weight) <= 0) return "Product weight (grams) is required.";
+    if (form.images.filter((img) => img.url).length === 0)
+      return "At least one product image is required.";
     return null;
   }
 

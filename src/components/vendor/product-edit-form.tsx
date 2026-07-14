@@ -202,12 +202,31 @@ export function ProductEditForm({
     }
   }
 
+  function validate(): string | null {
+    if (!form.name.trim()) return "Product name is required.";
+    if (!form.description.trim()) return "Full description is required.";
+    if (!form.categoryId) return "Please select a category.";
+    if (!form.price || parseFloat(form.price) <= 0) return "Regular price is required.";
+    if (form.salePrice && parseFloat(form.salePrice) >= parseFloat(form.price))
+      return "Sale price must be lower than regular price.";
+    if (!form.weight || parseInt(form.weight) <= 0) return "Product weight (grams) is required.";
+    if (form.images.filter((img) => img.url).length === 0)
+      return "At least one product image is required.";
+    return null;
+  }
+
   function handleSubmit(targetStatus: "DRAFT" | "PENDING_REVIEW" | "KEEP") {
-    if (targetStatus === "PENDING_REVIEW" && (!form.weight || parseInt(form.weight) <= 0)) {
-      setWeightError(true);
-      toast.error("Product weight is required before submitting for review.");
-      document.getElementById("product-weight-field")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
+    if (targetStatus === "PENDING_REVIEW") {
+      const error = validate();
+      if (error) {
+        const isWeightError = error.includes("weight");
+        setWeightError(isWeightError);
+        toast.error(error);
+        if (isWeightError) {
+          document.getElementById("product-weight-field")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
     }
     setWeightError(false);
     const resolvedStatus = targetStatus === "KEEP"

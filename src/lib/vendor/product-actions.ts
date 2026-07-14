@@ -25,6 +25,22 @@ async function requireVendor() {
   return { user: session.user, vendor };
 }
 
+// Server-side re-validation for products going live — never trust the client
+// alone, since a bypassed/broken form could otherwise publish incomplete listings.
+function validateForReview(data: Pick<ProductFormData, "name" | "description" | "categoryId" | "price" | "salePrice" | "weight" | "images">): string | null {
+  if (!data.name.trim()) return "Product name is required.";
+  if (!data.description.trim()) return "Full description is required.";
+  if (!data.categoryId) return "Please select a category.";
+  if (!data.price || parseFloat(data.price) <= 0) return "Regular price is required.";
+  if (data.salePrice && parseFloat(data.salePrice) >= parseFloat(data.price))
+    return "Sale price must be lower than regular price.";
+  if (!data.weight || parseInt(data.weight) <= 0)
+    return "Product weight (grams) is required. Delivery charges cannot be calculated without it.";
+  if (data.images.filter((img) => img.url).length === 0)
+    return "At least one product image is required.";
+  return null;
+}
+
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 export type ProductFormData = {
@@ -86,9 +102,10 @@ export async function createProductAction(
     const { vendor } = await requireVendor();
     if (!vendor.store?.id) return { success: false, error: "You must have a store to create products." };
 
-    // Weight required for review/active products
-    if (data.status === "PENDING_REVIEW" && (!data.weight || parseInt(data.weight) <= 0)) {
-      return { success: false, error: "Product weight (grams) is required. Delivery charges cannot be calculated without it." };
+    // Full validation required for review/active products
+    if (data.status === "PENDING_REVIEW") {
+      const validationError = validateForReview(data);
+      if (validationError) return { success: false, error: validationError };
     }
 
     // Check slug uniqueness
@@ -193,9 +210,10 @@ export async function updateProductAction(
     const existing = await db.product.findFirst({ where: { id: productId, vendorId: vendor.id } });
     if (!existing) return { success: false, error: "Product not found." };
 
-    // Weight required for review/active products
-    if (data.status === "PENDING_REVIEW" && (!data.weight || parseInt(data.weight) <= 0)) {
-      return { success: false, error: "Product weight (grams) is required. Delivery charges cannot be calculated without it." };
+    // Full validation required for review/active products
+    if (data.status === "PENDING_REVIEW") {
+      const validationError = validateForReview(data);
+      if (validationError) return { success: false, error: validationError };
     }
 
     // Check slug uniqueness (excluding this product)
