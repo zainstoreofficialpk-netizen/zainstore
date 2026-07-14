@@ -1,11 +1,21 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 // ── Client ────────────────────────────────────────────────────────────────────
+// Gmail SMTP — sends as GMAIL_USER, authenticated with a Google App Password
+// (not the account's real password; generate one at myaccount.google.com/apppasswords).
 
-let resend: import("resend").Resend | null = null;
-function getResend() {
-  if (!resend) resend = new Resend(process.env.RESEND_API_KEY ?? "");
-  return resend;
+let transporter: import("nodemailer").Transporter | null = null;
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
+  }
+  return transporter;
 }
 
 // ── Core send function ────────────────────────────────────────────────────────
@@ -13,15 +23,15 @@ function getResend() {
 type EmailPayload = { to: string; subject: string; html: string };
 
 export async function sendEmail({ to, subject, html }: EmailPayload) {
-  if (!process.env.RESEND_API_KEY) {
-    console.log("\n📧 [Email — RESEND_API_KEY not set]");
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.log("\n📧 [Email — GMAIL_USER/GMAIL_APP_PASSWORD not set]");
     console.log(`   To: ${to} | Subject: ${subject}`);
     return;
   }
   try {
-    const from = process.env.EMAIL_FROM ?? "ZainStore.pk <onboarding@resend.dev>";
-    const { error } = await getResend().emails.send({ from, to, subject, html });
-    if (error) console.error("❌ Email send failed:", error);
+    const from = process.env.EMAIL_FROM ?? `ZainStore.pk <${process.env.GMAIL_USER}>`;
+    const info = await getTransporter().sendMail({ from, to, subject, html });
+    if (info.rejected.length > 0) console.error("❌ Email rejected:", info.rejected);
   } catch (err) {
     console.error("❌ Email send failed:", err);
   }
