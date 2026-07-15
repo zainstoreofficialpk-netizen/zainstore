@@ -73,6 +73,7 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
   const [accountOpen, setAccountOpen] = useState(false);
   const cartItems = useCartStore((s) => s.items);
   const cartCount = cartItemCount(cartItems);
+  const openCart = useCartStore((s) => s.openCart);
   const [wishlistCount, setWishlistCount] = useState(0);
   const megaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -157,7 +158,10 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
             </Link>
 
             {/* Cart */}
-            <Link href="/shop/cart"
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label="Open cart"
               className="relative p-2.5 text-zinc-600 hover:text-brand-500 transition-colors rounded-xl hover:bg-zinc-50">
               <ShoppingCart className="h-[22px] w-[22px]" />
               {cartCount > 0 && (
@@ -165,7 +169,7 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
                   {cartCount > 9 ? "9+" : cartCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             {/* Account */}
             <div ref={accountRef} className="relative">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { X, ChevronDown, ChevronRight, Home, ShoppingCart, Heart, User, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { useCartStore } from "@/lib/store/cart-store";
 
 type NavCategory = { id: string; name: string; slug: string; children: { id: string; name: string; slug: string }[] };
 type SessionUser = { id: string; name: string | null; email: string | null; image: string | null; role: string } | null;
@@ -17,6 +18,7 @@ interface Props {
 
 export function MobileDrawer({ isOpen, onClose, categories, user }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const openCart = useCartStore((s) => s.openCart);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -68,7 +70,6 @@ export function MobileDrawer({ isOpen, onClose, categories, user }: Props) {
             {[
               { icon: Home, label: "Home", href: "/shop" },
               { icon: Heart, label: "Wishlist", href: user ? "/customer/wishlist" : "/login" },
-              { icon: ShoppingCart, label: "Cart", href: "/shop/cart" },
             ].map(({ icon: Icon, label, href }) => (
               <Link key={label} href={href} onClick={onClose}
                 className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-brand-50 hover:text-brand-600 text-zinc-600 text-xs font-medium transition-colors">
@@ -76,6 +77,13 @@ export function MobileDrawer({ isOpen, onClose, categories, user }: Props) {
                 {label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => { onClose(); openCart(); }}
+              className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-zinc-50 hover:bg-brand-50 hover:text-brand-600 text-zinc-600 text-xs font-medium transition-colors">
+              <ShoppingCart className="h-4 w-4" />
+              Cart
+            </button>
           </div>
 
           {/* Browse all products */}

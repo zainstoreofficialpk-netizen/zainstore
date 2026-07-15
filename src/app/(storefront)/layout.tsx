@@ -119,7 +119,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
     <VisitorTracker />
     <UtmTracker />
-    <div className="min-h-screen bg-zinc-50 flex flex-col overflow-x-hidden w-full">
+    <div className="min-h-screen bg-zinc-50 flex flex-col w-full">
       <StorefrontHeader
         categories={categories}
         brands={brands}
