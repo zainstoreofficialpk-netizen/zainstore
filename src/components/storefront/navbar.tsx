@@ -179,7 +179,7 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
               >
                 {user?.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.image} alt="" className="h-7 w-7 rounded-full object-cover ring-2 ring-brand-200" />
+                  <img src={user.image} alt={user.name ?? "Account"} className="h-7 w-7 rounded-full object-cover ring-2 ring-brand-200" />
                 ) : (
                   <div className="h-7 w-7 rounded-full bg-zinc-100 flex items-center justify-center">
                     <User className="h-4 w-4 text-zinc-500" />

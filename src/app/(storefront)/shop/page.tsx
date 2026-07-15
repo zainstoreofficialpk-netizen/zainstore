@@ -32,7 +32,7 @@ import { HomepageVendorSection } from "@/components/storefront/homepage-vendor-s
 import type { ProductCardData } from "@/components/storefront/product-card";
 
 export const metadata: Metadata = {
-  title: "ZainStore.pk — Shop Online in Pakistan | Best Deals on Electronics, Fashion & More",
+  title: { absolute: "ZainStore.pk — Shop Online in Pakistan | Best Deals on Electronics, Fashion & More" },
   description: "Discover thousands of products from verified sellers across Pakistan. Shop electronics, fashion, beauty, home & more with fast delivery and secure payments.",
   keywords: ["online shopping Pakistan", "buy electronics Pakistan", "fashion online Pakistan", "ZainStore deals", "best prices Pakistan"],
   alternates: { canonical: "https://zainstore.pk/shop" },

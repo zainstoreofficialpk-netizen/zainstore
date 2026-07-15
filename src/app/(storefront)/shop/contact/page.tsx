@@ -6,8 +6,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Contact Us — ZainStore.pk",
+  title: "Contact Us",
   description: "Get in touch with ZainStore.pk support team. Call, WhatsApp, or email us for any queries.",
+  alternates: { canonical: "https://zainstore.pk/shop/contact" },
 };
 
 export default function ContactPage() {

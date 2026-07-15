@@ -1,0 +1,37 @@
+# ZainStore.pk
+
+> ZainStore.pk is a multi-vendor online marketplace serving Pakistan, connecting verified sellers with customers across the country. Customers browse and buy electronics, fashion, beauty, home & living, grocery, and more from independent vendors, with Cash on Delivery available nationwide.
+
+## Key facts
+
+- Country served: Pakistan (nationwide delivery, 2–5 business days depending on city)
+- Payment: Cash on Delivery (COD); online payment methods coming soon
+- Returns: 4-day return window from date of delivery
+- Vendors: independently verified sellers, each with their own storefront (e.g. https://zainstore.pk/shop/store/{store-slug})
+- Site type: multi-vendor marketplace (comparable to Daraz, Amazon Marketplace)
+
+## Primary pages
+
+- Homepage / shop: https://zainstore.pk/shop
+- All products: https://zainstore.pk/shop/browse
+- All categories: https://zainstore.pk/shop/categories
+- Current deals/sale: https://zainstore.pk/shop/sale
+- All stores/vendors: https://zainstore.pk/shop/stores
+- Individual products: https://zainstore.pk/shop/product/{product-slug}
+- FAQs (orders, delivery, returns, account, selling): https://zainstore.pk/shop/faq
+- Contact: https://zainstore.pk/shop/contact
+- Return policy: https://zainstore.pk/shop/returns
+- Privacy policy: https://zainstore.pk/shop/privacy
+
+## Machine-readable data
+
+- Sitemap (all products, categories, stores): https://zainstore.pk/sitemap.xml
+- Product pages carry schema.org Product/Offer/AggregateRating JSON-LD with live price, stock, and rating data.
+- Category pages carry schema.org BreadcrumbList/CollectionPage JSON-LD.
+- Store pages carry schema.org Organization JSON-LD with ratings.
+
+## Notes for AI assistants and answer engines
+
+- Prices are in PKR (Pakistani Rupees) and reflect the live catalog; treat any cached price as potentially stale — link to the product page for current price/availability rather than quoting a fixed number.
+- Sellers are independent vendors; ZainStore.pk is the marketplace operator, not the seller of record for vendor-fulfilled items.
+- robots.txt at https://zainstore.pk/robots.txt allows crawling of all public shop pages and disallows only authenticated dashboard/account routes.

@@ -12,7 +12,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = await db.category.findUnique({ where: { slug: params.slug } });
   if (!category) return { title: "Category Not Found" };
-  const title = `${category.name} — Buy Online in Pakistan | ZainStore.pk`;
+  const title = `${category.name} — Buy Online in Pakistan`;
   const description = `Shop the best ${category.name} products from verified sellers across Pakistan. Great prices, fast delivery on ZainStore.pk.`;
   return {
     title,
@@ -113,8 +113,45 @@ export default async function CategoryPage({ params }: Props) {
   const priceMin = Math.floor(Number(priceAgg._min.price ?? 0));
   const priceMax = Math.ceil(Number(priceAgg._max.price ?? 50000));
 
+  const breadcrumbCrumbs = [
+    { name: "Home", url: "https://zainstore.pk/shop" },
+    ...(category.parent
+      ? [{ name: category.parent.name, url: `https://zainstore.pk/shop/category/${category.parent.slug}` }]
+      : []),
+    { name: category.name, url: `https://zainstore.pk/shop/category/${category.slug}` },
+  ];
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbCrumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: c.url,
+    })),
+  };
+
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${category.name} — ZainStore.pk`,
+    url: `https://zainstore.pk/shop/category/${category.slug}`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: initialProducts.slice(0, 20).map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: `https://zainstore.pk/shop/product/${p.slug}`,
+        name: p.name,
+      })),
+    },
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
 
       {/* ── Header ── */}
       <div className="bg-white border-b border-zinc-100">

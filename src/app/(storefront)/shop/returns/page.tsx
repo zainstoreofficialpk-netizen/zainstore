@@ -6,8 +6,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Return Policy — ZainStore.pk",
+  title: "Return Policy",
   description: "ZainStore.pk 4-day return policy. Learn how to return products and get a refund.",
+  alternates: { canonical: "https://zainstore.pk/shop/returns" },
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

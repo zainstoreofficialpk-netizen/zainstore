@@ -270,7 +270,7 @@ function ReviewCard({ review }: { review: ReviewData }) {
         <div className="h-9 w-9 rounded-full bg-brand-100 flex items-center justify-center shrink-0 overflow-hidden">
           {review.user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={review.user.image} alt="" className="w-full h-full object-cover" />
+            <img src={review.user.image} alt={review.user.name ?? "Reviewer"} className="w-full h-full object-cover" />
           ) : (
             <span className="text-xs font-black text-brand-700">{initials}</span>
           )}

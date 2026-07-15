@@ -76,6 +76,7 @@ export function CartFlyProvider({ children }: { children: React.ReactNode }) {
       {flies.map((fly) => (
         <div
           key={fly.id}
+          aria-hidden="true"
           className="pointer-events-none fixed z-[9999] rounded-full overflow-hidden border-[3px] border-white shadow-2xl"
           style={{
             width: FLY_SIZE,

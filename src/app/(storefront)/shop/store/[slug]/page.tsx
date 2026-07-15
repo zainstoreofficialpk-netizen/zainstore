@@ -16,7 +16,7 @@ type Props = { params: { slug: string }; searchParams: { tab?: string; category?
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const store = await getStoreBySlug(params.slug);
   if (!store) return { title: "Store Not Found" };
-  const title = `${store.name} — Official Store | ZainStore.pk`;
+  const title = `${store.name} — Official Store`;
   const description = store.description
     ? store.description.slice(0, 160)
     : `Shop ${store.productCount} products from ${store.name} on ZainStore.pk. Verified seller, fast delivery across Pakistan.`;
@@ -69,8 +69,44 @@ export default async function VendorStorePage({ params, searchParams }: Props) {
     reviewCount: p.reviewCount,
   }));
 
+  const storeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: store.name,
+    url: `https://zainstore.pk/shop/store/${store.slug}`,
+    ...(store.logoUrl ? { logo: store.logoUrl } : {}),
+    ...(store.description ? { description: store.description.slice(0, 500) } : {}),
+    ...(store.address ? { address: store.address } : {}),
+    ...(store.phone ? { telephone: store.phone } : {}),
+    ...(store.email ? { email: store.email } : {}),
+    ...(store.totalReviews > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: store.avgRating.toFixed(1),
+            reviewCount: store.totalReviews,
+            bestRating: "5",
+            worstRating: "1",
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://zainstore.pk/shop" },
+      { "@type": "ListItem", position: 2, name: "Stores", item: "https://zainstore.pk/shop/stores" },
+      { "@type": "ListItem", position: 3, name: store.name, item: `https://zainstore.pk/shop/store/${store.slug}` },
+    ],
+  };
+
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+
       {/* Breadcrumb */}
       <div className="bg-white border-b border-zinc-100">
         <div className="container mx-auto px-4 max-w-7xl py-2.5">

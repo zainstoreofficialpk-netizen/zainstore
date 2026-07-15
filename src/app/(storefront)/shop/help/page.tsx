@@ -18,8 +18,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Help Center — ZainStore.pk",
+  title: "Help Center",
   description: "Get help with your orders, returns, account, and more. Contact ZainStore.pk support.",
+  alternates: { canonical: "https://zainstore.pk/shop/help" },
 };
 
 const MAIN_LINKS = [

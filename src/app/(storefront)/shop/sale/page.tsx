@@ -6,7 +6,7 @@ import { SalePage } from "@/components/storefront/sale-page";
 import type { Prisma } from "@prisma/client";
 
 export const metadata: Metadata = {
-  title: "Mega Sale — Up to 70% Off | ZainStore.pk",
+  title: "Mega Sale — Up to 70% Off",
   description: "Shop the biggest sale on ZainStore.pk. Up to 70% off on electronics, fashion, home & more. Limited time deals across all categories.",
   alternates: { canonical: "https://zainstore.pk/shop/sale" },
   openGraph: {

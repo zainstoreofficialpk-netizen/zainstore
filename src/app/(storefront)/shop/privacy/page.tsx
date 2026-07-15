@@ -3,8 +3,9 @@ import Link from "next/link";
 import { ChevronRight, Shield, Lock, Eye, Database, Mail, Phone } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — ZainStore.pk",
+  title: "Privacy Policy",
   description: "Learn how ZainStore.pk collects, uses, and protects your personal information.",
+  alternates: { canonical: "https://zainstore.pk/shop/privacy" },
 };
 
 function Section({ id, icon: Icon, iconBg, title, children }: {

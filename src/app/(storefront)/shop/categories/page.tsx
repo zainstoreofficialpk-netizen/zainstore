@@ -4,8 +4,9 @@ import { ChevronRight, Tag, Package, ShoppingBag, Cpu, Shirt, Home, Sparkles, Tr
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "All Categories — ZainStore.pk",
+  title: "All Categories",
   description: "Browse all product categories on ZainStore.pk — electronics, fashion, beauty, grocery and more.",
+  alternates: { canonical: "https://zainstore.pk/shop/categories" },
 };
 
 // ─── Icon + Colour mapping ────────────────────────────────────

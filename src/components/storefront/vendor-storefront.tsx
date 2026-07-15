@@ -41,7 +41,7 @@ function ReviewCard({ review }: { review: StoreReview }) {
         <div className="h-9 w-9 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 overflow-hidden">
           {review.user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={review.user.image} alt="" className="w-full h-full object-cover" />
+            <img src={review.user.image} alt={review.user.name ?? "Reviewer"} className="w-full h-full object-cover" />
           ) : (
             <span className="text-sm font-black text-zinc-400">
               {(review.user.name ?? "?")[0].toUpperCase()}
@@ -73,7 +73,7 @@ function ReviewCard({ review }: { review: StoreReview }) {
         <div className="flex gap-2 mt-3 flex-wrap">
           {review.images.map((img, i) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={img.url} alt="" className="h-16 w-16 object-cover rounded-lg border border-zinc-100" />
+            <img key={i} src={img.url} alt={`${review.user.name ?? "Reviewer"} photo ${i + 1}`} className="h-16 w-16 object-cover rounded-lg border border-zinc-100" />
           ))}
         </div>
       )}

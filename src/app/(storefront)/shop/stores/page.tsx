@@ -6,7 +6,7 @@ import { getAllStores } from "@/lib/storefront/store-data";
 import { StoresDirectory } from "@/components/storefront/stores-directory";
 
 export const metadata: Metadata = {
-  title: "All Stores — ZainStore.pk",
+  title: "All Stores",
   description: "Browse all verified vendor stores on ZainStore.pk — Pakistan's premier multi-vendor marketplace.",
   alternates: { canonical: "https://zainstore.pk/shop/stores" },
   openGraph: {

@@ -170,7 +170,7 @@ export function SearchBar() {
                           className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-zinc-50 gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {p.imageUrl
-                              ? <img src={p.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0 border border-zinc-100" />
+                              ? <img src={p.imageUrl} alt={p.name} className="h-9 w-9 rounded-lg object-cover shrink-0 border border-zinc-100" />
                               : <div className="h-9 w-9 rounded-lg bg-zinc-100 shrink-0" />
                             }
                             <span className="text-sm text-zinc-800 truncate">{p.name}</span>

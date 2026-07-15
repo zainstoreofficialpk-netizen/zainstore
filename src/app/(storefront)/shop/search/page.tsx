@@ -11,7 +11,7 @@ interface Props {
 export function generateMetadata({ searchParams }: Props): Metadata {
   const q = searchParams.q?.trim() ?? "";
   return {
-    title: q ? `"${q}" — Search Results | ZainStore.pk` : "Search — ZainStore.pk",
+    title: q ? `"${q}" — Search Results` : "Search",
     description: `Search results for "${q}" on ZainStore.pk`,
     robots: { index: false, follow: true },
   };
@@ -140,7 +140,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 >
                   {cat.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cat.imageUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+                    <img src={cat.imageUrl} alt="" aria-hidden="true" className="h-4 w-4 rounded-full object-cover" />
                   )}
                   {cat.name}
                   <ArrowRight className="h-3 w-3" />

@@ -6,7 +6,7 @@ import { ShopBrowse } from "@/components/storefront/shop-browse";
 import type { Prisma } from "@prisma/client";
 
 export const metadata: Metadata = {
-  title: "Shop All Products — ZainStore.pk",
+  title: "Shop All Products",
   description: "Browse thousands of products from verified vendors across Pakistan. Filter by category, price, brand, rating and more.",
   alternates: { canonical: "https://zainstore.pk/shop/browse" },
   openGraph: {
