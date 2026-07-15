@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { SearchBar } from "./search-bar";
 import { MegaMenu } from "./mega-menu";
+import { useCartStore, cartItemCount } from "@/lib/store/cart-store";
 
 type NavCategory = { id: string; name: string; slug: string; children: { id: string; name: string; slug: string }[] };
 type NavBrand = { id: string; name: string; logoUrl: string | null };
@@ -70,7 +71,8 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const cartItems = useCartStore((s) => s.items);
+  const cartCount = cartItemCount(cartItems);
   const [wishlistCount, setWishlistCount] = useState(0);
   const megaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -79,19 +81,6 @@ export function Navbar({ categories, brands, user, onMenuOpen }: Props) {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Cart from localStorage
-  useEffect(() => {
-    function sync() {
-      try {
-        const cart: { qty?: number }[] = JSON.parse(localStorage.getItem("zs_cart") ?? "[]");
-        setCartCount(cart.reduce((s, i) => s + (i.qty ?? 1), 0));
-      } catch { setCartCount(0); }
-    }
-    sync();
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
   }, []);
 
   // Wishlist from API

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   ShoppingCart,
   Zap,
@@ -14,11 +14,13 @@ import {
   RotateCcw,
   Star,
 } from "lucide-react";
+import { toast } from "sonner";
 import { formatCurrency } from "@/lib/format";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useFlyContext } from "./cart-fly-context";
 import { useProductVariant } from "./product-variant-context";
 import { VariantPicker } from "./variant-picker";
+import { toggleWishlistAction } from "@/lib/customer/wishlist-actions";
 
 export type ProductInfoData = {
   id: string;
@@ -55,7 +57,23 @@ export function ProductInfo({
   const [added, setAdded] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isWishlistPending, startWishlistTransition] = useTransition();
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  function handleToggleWishlist() {
+    startWishlistTransition(async () => {
+      const result = await toggleWishlistAction(product.id);
+      if (result.success) {
+        setWishlisted(result.inWishlist ?? !wishlisted);
+        toast(result.message, {
+          icon: result.inWishlist ? "❤️" : "🤍",
+          duration: 2000,
+        });
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
@@ -289,8 +307,9 @@ export function ProductInfo({
         {/* Wishlist + Share */}
         <div className="flex gap-2">
           <button
-            onClick={() => setWishlisted((w) => !w)}
-            className={`flex-1 h-10 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition-all duration-200 ${
+            onClick={handleToggleWishlist}
+            disabled={isWishlistPending}
+            className={`flex-1 h-10 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition-all duration-200 disabled:opacity-50 ${
               wishlisted
                 ? "border-red-200 bg-red-50 text-red-500"
                 : "border-zinc-200 hover:border-zinc-300 text-zinc-500 hover:text-zinc-700"

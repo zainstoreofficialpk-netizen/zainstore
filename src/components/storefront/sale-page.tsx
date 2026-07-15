@@ -7,9 +7,11 @@ import {
   Star, Heart, ShoppingCart, Zap, Flame, Check,
   Tag, Filter, ArrowRight, TrendingDown, Package,
 } from "lucide-react";
+import { toast } from "sonner";
 import { formatCurrency } from "@/lib/format";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useFlyContext } from "./cart-fly-context";
+import { toggleWishlistAction } from "@/lib/customer/wishlist-actions";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -114,6 +116,7 @@ function SaleCard({ product }: { product: SaleProduct }) {
   const imgRef  = useRef<HTMLDivElement>(null);
   const [added,      setAdded]      = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+  const [isWishlistPending, startWishlistTransition] = useTransition();
 
   const badge   = getBadge(product.discount, product.featured);
   const savings = product.price - product.salePrice;
@@ -138,7 +141,18 @@ function SaleCard({ product }: { product: SaleProduct }) {
 
   function handleWishlist(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
-    setWishlisted((w) => !w);
+    startWishlistTransition(async () => {
+      const result = await toggleWishlistAction(product.id);
+      if (result.success) {
+        setWishlisted(result.inWishlist ?? !wishlisted);
+        toast(result.message, {
+          icon: result.inWishlist ? "❤️" : "🤍",
+          duration: 2000,
+        });
+      } else {
+        toast.error(result.error);
+      }
+    });
   }
 
   return (
@@ -175,7 +189,8 @@ function SaleCard({ product }: { product: SaleProduct }) {
           {/* Wishlist — top right */}
           <button
             onClick={handleWishlist}
-            className={`absolute top-2 right-2 h-7 w-7 rounded-full flex items-center justify-center shadow transition-all duration-200 z-10 ${
+            disabled={isWishlistPending}
+            className={`absolute top-2 right-2 h-7 w-7 rounded-full flex items-center justify-center shadow transition-all duration-200 z-10 disabled:opacity-50 ${
               wishlisted
                 ? "bg-red-50 text-red-500 opacity-100"
                 : "bg-white/90 text-zinc-400 hover:text-red-400 opacity-0 group-hover:opacity-100"

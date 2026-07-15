@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Heart, Star, ShoppingCart, Check } from "lucide-react";
+import { toast } from "sonner";
 import { formatCurrency } from "@/lib/format";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useFlyContext } from "./cart-fly-context";
+import { toggleWishlistAction } from "@/lib/customer/wishlist-actions";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -58,6 +60,8 @@ export function ProductCard({
   const imgRef = useRef<HTMLDivElement>(null);
   const [added, setAdded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [wishlisted, setWishlisted] = useState(false);
+  const [isWishlistPending, startWishlistTransition] = useTransition();
 
   const discount =
     product.salePrice && product.price > 0
@@ -95,6 +99,23 @@ export function ProductCard({
     setTimeout(() => setAdded(false), 1500);
   }
 
+  function handleToggleWishlist(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    startWishlistTransition(async () => {
+      const result = await toggleWishlistAction(product.id);
+      if (result.success) {
+        setWishlisted(result.inWishlist ?? !wishlisted);
+        toast(result.message, {
+          icon: result.inWishlist ? "❤️" : "🤍",
+          duration: 2000,
+        });
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
     <Link
       href={`/shop/product/${product.slug}`}
@@ -127,11 +148,16 @@ export function ProductCard({
 
         {/* Wishlist */}
         <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="absolute top-2 right-2 h-7 w-7 bg-white/90 rounded-full flex items-center justify-center text-zinc-400 hover:text-red-400 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-150 z-10"
-          aria-label="Add to wishlist"
+          onClick={handleToggleWishlist}
+          disabled={isWishlistPending}
+          className={`absolute top-2 right-2 h-7 w-7 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 z-10 disabled:opacity-50 ${
+            wishlisted
+              ? "bg-red-50 text-red-500 opacity-100"
+              : "bg-white/90 text-zinc-400 hover:text-red-400 opacity-0 group-hover:opacity-100"
+          }`}
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className="h-3.5 w-3.5" />
+          <Heart className={`h-3.5 w-3.5 ${wishlisted ? "fill-red-400" : ""}`} />
         </button>
 
         {/* Add to Cart — always visible on mobile, slides up on desktop hover */}
