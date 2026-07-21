@@ -56,6 +56,17 @@ function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-sm">
 
+        {/* Back to homepage */}
+        <Link
+          href="/shop"
+          className="mb-6 flex items-center justify-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-brand-600 transition-colors"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Go to Homepage
+        </Link>
+
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
