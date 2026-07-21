@@ -18,9 +18,9 @@ type VisitorStats = {
 export function VisitorStats({ stats }: { stats: VisitorStats }) {
   const [liveOnline, setLiveOnline] = useState(stats.online);
 
-  // Refresh online count every 30 seconds
+  // Refresh online count every 2 minutes, and only while the tab is visible
   useEffect(() => {
-    const interval = setInterval(async () => {
+    async function fetchOnline() {
       try {
         const res = await fetch("/api/admin/visitor-online");
         if (res.ok) {
@@ -28,8 +28,21 @@ export function VisitorStats({ stats }: { stats: VisitorStats }) {
           setLiveOnline(data.online ?? stats.online);
         }
       } catch { /* silent */ }
-    }, 30_000);
-    return () => clearInterval(interval);
+    }
+
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchOnline();
+    }, 120_000);
+
+    function handleVisibility() {
+      if (!document.hidden) fetchOnline();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [stats.online]);
 
   const cards = [

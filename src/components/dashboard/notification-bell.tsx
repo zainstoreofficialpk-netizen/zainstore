@@ -15,7 +15,7 @@ type Notification = {
 
 type MarkAction = (id?: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 120_000;
 
 export function NotificationBell({
   apiPath,
@@ -82,8 +82,19 @@ export function NotificationBell({
 
   useEffect(() => {
     fetchNotifications();
-    const id = setInterval(fetchNotifications, POLL_INTERVAL);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      if (!document.hidden) fetchNotifications();
+    }, POLL_INTERVAL);
+
+    function handleVisibility() {
+      if (!document.hidden) fetchNotifications();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
