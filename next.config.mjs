@@ -48,6 +48,29 @@ const nextConfig = {
         destination: "/shop/category/:slug",
         permanent: true,
       },
+      // WordPress's own feed endpoint on a shop URL, e.g. /shops/hair-care/sunsillk/feed/
+      // — not real content, send to the shop page rather than trying to treat
+      // "feed" as a product slug.
+      {
+        source: "/shops/:category/:slug/feed{/}?",
+        destination: "/shop",
+        permanent: true,
+      },
+      // Pagination and the bare listing must be matched BEFORE the general
+      // /shops/:category/:slug rule below — otherwise "/shops/page/8/" gets
+      // parsed as category="page", slug="8" and wrongly redirected to a
+      // product page instead of the shop listing (redirects() matches in
+      // array order, first match wins).
+      {
+        source: "/shops/page/:num{/}?",
+        destination: "/shop/stores",
+        permanent: true,
+      },
+      {
+        source: "/shops{/}?",
+        destination: "/shop/stores",
+        permanent: true,
+      },
       // Old WooCommerce vendor-store product URLs: /shops/{any-category}/{product-slug}/
       {
         source: "/shops/:category/:slug{/}?",
@@ -60,19 +83,17 @@ const nextConfig = {
         destination: "/shop/store/:slug",
         permanent: true,
       },
+      // One-off slug fixups: the new site's slugify strips apostrophes
+      // differently than the old WP site did, so a couple of store slugs
+      // don't match their legacy WordPress URL 1:1.
+      {
+        source: "/store/rk-traders{/}?",
+        destination: "/shop/store/rk-trader-s",
+        permanent: true,
+      },
       {
         source: "/store/:slug{/}?",
         destination: "/shop/store/:slug",
-        permanent: true,
-      },
-      {
-        source: "/shops/page/:num{/}?",
-        destination: "/shop/stores",
-        permanent: true,
-      },
-      {
-        source: "/shops{/}?",
-        destination: "/shop/stores",
         permanent: true,
       },
       // Bare listing URLs with no slug — send to the general shop page
