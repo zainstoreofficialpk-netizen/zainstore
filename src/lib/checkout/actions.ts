@@ -171,6 +171,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     if (session?.user) {
       customerId = (session.user as { id: string }).id;
+      await db.user.update({
+        where: { id: customerId },
+        data: { phone: input.phone },
+      });
     } else {
       // Find or create guest customer account
       const existing = await db.user.findUnique({
@@ -178,11 +182,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       });
       if (existing) {
         customerId = existing.id;
+        await db.user.update({
+          where: { id: customerId },
+          data: { phone: input.phone },
+        });
       } else {
         const newUser = await db.user.create({
           data: {
             email: input.email.toLowerCase().trim(),
             name: input.fullName,
+            phone: input.phone,
             role: "CUSTOMER",
             emailVerified: null,
           },
