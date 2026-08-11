@@ -47,7 +47,7 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
   // Older orders only ever saved the checkout phone number into the notes
   // text (never onto the customer record) — fall back to parsing it out of
   // there so past orders still show a usable number.
-  const notesPhoneMatch = order.notes?.match(/Phone:\s*([^\n]+)/i);
+  const notesPhoneMatch = order.notes?.match(/Phone:\s*([^\n|]+)/i);
   const customerPhone = (order.customer as { phone?: string | null }).phone || notesPhoneMatch?.[1]?.trim() || "";
   const deliveryAddress = order.shippingAddress
     ? [order.shippingAddress.line1, order.shippingAddress.line2, order.shippingAddress.city].filter(Boolean).join(", ")
