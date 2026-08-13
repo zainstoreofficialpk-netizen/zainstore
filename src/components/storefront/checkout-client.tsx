@@ -193,7 +193,7 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [orderPlaced, setOrderPlaced] = useState<{ orderNumber: string; orderId: string } | null>(null);
+  const [orderPlaced, setOrderPlaced] = useState<{ orderNumber: string; orderId: string; grandTotal: number } | null>(null);
 
   // ── Hydration guard ──────────────────────────────────────────
 
@@ -396,7 +396,7 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
     if (result.success) {
       clearCart();
       localStorage.removeItem(SAVE_KEY);
-      setOrderPlaced({ orderNumber: result.orderNumber, orderId: result.orderId });
+      setOrderPlaced({ orderNumber: result.orderNumber, orderId: result.orderId, grandTotal });
     } else {
       setSubmitError(result.error);
     }
@@ -405,7 +405,15 @@ export function CheckoutClient({ user, shippingSettings }: { user: User; shippin
   // ── Order success screen ─────────────────────────────────────
 
   if (orderPlaced) {
-    return <OrderSuccess orderNumber={orderPlaced.orderNumber} orderId={orderPlaced.orderId} paymentMethod={form.paymentMethod} city={form.city} />;
+    return (
+      <OrderSuccess
+        orderNumber={orderPlaced.orderNumber}
+        orderId={orderPlaced.orderId}
+        paymentMethod={form.paymentMethod}
+        city={form.city}
+        value={orderPlaced.grandTotal}
+      />
+    );
   }
 
   // ── Empty cart ───────────────────────────────────────────────
@@ -1208,13 +1216,29 @@ function OrderSuccess({
   orderId,
   paymentMethod,
   city,
+  value,
 }: {
   orderNumber: string;
   orderId: string;
   paymentMethod: string;
   city: string;
+  value: number;
 }) {
   void orderId;
+
+  // Fire the Meta Pixel Purchase event once, when the confirmation screen mounts.
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
+    fbq?.("track", "Purchase", {
+      value,
+      currency: "PKR",
+      content_type: "product",
+      order_id: orderNumber,
+    });
+  }, [orderNumber, value]);
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center px-4 py-12">
