@@ -27,7 +27,14 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
       shippingAddress: true,
       items: {
         include: {
-          product: { select: { name: true, sku: true } },
+          product: {
+            select: {
+              name: true,
+              sku: true,
+              slug: true,
+              images: { take: 1, select: { url: true }, orderBy: { sortOrder: "asc" } },
+            },
+          },
           vendor: {
             select: {
               id: true,
@@ -96,21 +103,52 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
                 <p className="text-sm font-semibold text-zinc-800">Order Items</p>
               </div>
               <div className="divide-y divide-zinc-50">
-                {order.items.map(item => (
-                  <div key={item.id} className="flex items-center justify-between px-4 py-3 gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-800 truncate">{item.product?.name ?? "—"}</p>
-                      {item.product?.sku && <p className="text-xs text-zinc-400">SKU: {item.product.sku}</p>}
-                      <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
-                        <Store className="w-3 h-3" /> {item.vendor?.store?.name ?? "Unknown Store"}
-                      </p>
+                {order.items.map(item => {
+                  const thumbnail = item.product?.images?.[0]?.url;
+                  const productHref = item.product?.slug ? `/shop/product/${item.product.slug}` : null;
+                  return (
+                    <div key={item.id} className="flex items-center justify-between px-4 py-3 gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {productHref ? (
+                          <Link href={productHref} target="_blank" className="shrink-0">
+                            {thumbnail ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={thumbnail} alt="" className="size-12 rounded-md object-cover border border-zinc-100 hover:opacity-80 transition-opacity" />
+                            ) : (
+                              <div className="size-12 rounded-md border border-zinc-100 bg-zinc-50 flex items-center justify-center">
+                                <Package className="w-4 h-4 text-zinc-300" />
+                              </div>
+                            )}
+                          </Link>
+                        ) : thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumbnail} alt="" className="size-12 rounded-md object-cover border border-zinc-100 shrink-0" />
+                        ) : (
+                          <div className="size-12 rounded-md border border-zinc-100 bg-zinc-50 flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4 text-zinc-300" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          {productHref ? (
+                            <Link href={productHref} target="_blank" className="text-sm font-medium text-zinc-800 truncate hover:text-cyan-600 hover:underline block">
+                              {item.product?.name ?? "—"}
+                            </Link>
+                          ) : (
+                            <p className="text-sm font-medium text-zinc-800 truncate">{item.product?.name ?? "—"}</p>
+                          )}
+                          {item.product?.sku && <p className="text-xs text-zinc-400">SKU: {item.product.sku}</p>}
+                          <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+                            <Store className="w-3 h-3" /> {item.vendor?.store?.name ?? "Unknown Store"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-zinc-900">{formatCurrency(Number(item.lineTotal))}</p>
+                        <p className="text-xs text-zinc-400">{item.quantity} × {formatCurrency(Number(item.unitPrice))}</p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-zinc-900">{formatCurrency(Number(item.lineTotal))}</p>
-                      <p className="text-xs text-zinc-400">{item.quantity} × {formatCurrency(Number(item.unitPrice))}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="px-4 py-3 bg-zinc-50 border-t border-zinc-100 flex justify-between">
                 <p className="text-sm font-bold text-zinc-700">Order Total</p>

@@ -35,7 +35,16 @@ export default async function VendorOrderDetailPage({ params }: { params: { id: 
       shippingAddress: true,
       items: {
         where: { vendorId: vendor.id },
-        include: { product: { select: { name: true, sku: true } } },
+        include: {
+          product: {
+            select: {
+              name: true,
+              sku: true,
+              slug: true,
+              images: { take: 1, select: { url: true }, orderBy: { sortOrder: "asc" } },
+            },
+          },
+        },
       },
     },
   });
@@ -90,15 +99,48 @@ export default async function VendorOrderDetailPage({ params }: { params: { id: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
-                  {vendorItems.map((item) => (
+                  {vendorItems.map((item) => {
+                    const thumbnail = item.product.images?.[0]?.url;
+                    const productHref = item.product.slug ? `/shop/product/${item.product.slug}` : null;
+                    return (
                     <tr key={item.id} className="hover:bg-zinc-50/40">
-                      <td className="px-4 py-3 font-medium text-zinc-900">{item.product.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {productHref ? (
+                            <Link href={productHref} target="_blank" className="shrink-0">
+                              {thumbnail ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={thumbnail} alt="" className="size-10 rounded-md object-cover border border-zinc-100 hover:opacity-80 transition-opacity" />
+                              ) : (
+                                <div className="size-10 rounded-md border border-zinc-100 bg-zinc-50 flex items-center justify-center">
+                                  <Package className="w-4 h-4 text-zinc-300" />
+                                </div>
+                              )}
+                            </Link>
+                          ) : thumbnail ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={thumbnail} alt="" className="size-10 rounded-md object-cover border border-zinc-100 shrink-0" />
+                          ) : (
+                            <div className="size-10 rounded-md border border-zinc-100 bg-zinc-50 flex items-center justify-center shrink-0">
+                              <Package className="w-4 h-4 text-zinc-300" />
+                            </div>
+                          )}
+                          {productHref ? (
+                            <Link href={productHref} target="_blank" className="font-medium text-zinc-900 hover:text-cyan-600 hover:underline">
+                              {item.product.name}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-zinc-900">{item.product.name}</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-zinc-400">{item.product.sku ?? "—"}</td>
                       <td className="px-4 py-3 text-center">{item.quantity}</td>
                       <td className="px-4 py-3">{formatCurrency(Number(item.unitPrice))}</td>
                       <td className="px-4 py-3 font-semibold">{formatCurrency(Number(item.lineTotal))}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
                 <tfoot className="border-t border-zinc-100 bg-zinc-50/50">
                   <tr>
